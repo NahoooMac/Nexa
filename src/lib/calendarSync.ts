@@ -1,26 +1,52 @@
-import { getAuth, GoogleAuthProvider, signInWithPopup } from 'firebase/auth';
+import { getAuth, GoogleAuthProvider, signInWithPopup, signInWithRedirect, getRedirectResult } from 'firebase/auth';
 import { useAuthStore } from '../store/authStore';
 
 const CALENDAR_SCOPE = 'https://www.googleapis.com/auth/calendar.events';
 
 /**
- * Sign in with Google using a popup. 
- * MUST be called directly in the onClick handler without any preceding `await` or state updates
- * to prevent the browser's popup blocker from blocking it.
+ * Sign in with Google using a robust fallback pattern.
+ * Tries a popup first, and if blocked (e.g., in PWAs or Safari), falls back to redirect.
  */
 export const signInWithGoogle = async (): Promise<string | null> => {
   const authInstance = getAuth();
   const provider = new GoogleAuthProvider();
   provider.addScope(CALENDAR_SCOPE);
 
-  const result = await signInWithPopup(authInstance, provider);
-  const credential = GoogleAuthProvider.credentialFromResult(result);
-  const token = credential?.accessToken ?? null;
+  try {
+    const result = await signInWithPopup(authInstance, provider);
+    const credential = GoogleAuthProvider.credentialFromResult(result);
+    const token = credential?.accessToken ?? null;
 
-  if (token) {
-    useAuthStore.getState().setGoogleAccessToken(token);
+    if (token) {
+      useAuthStore.getState().setGoogleAccessToken(token);
+    }
+    return token;
+  } catch (err: any) {
+    if (err?.code === 'auth/popup-blocked' || err?.message?.includes('popup-blocked')) {
+      console.warn('Popup blocked, falling back to redirect auth...');
+      await signInWithRedirect(authInstance, provider);
+      return null; // The page will navigate away
+    }
+    throw err;
   }
-  return token;
+};
+
+/**
+ * Captures the redirect result if the user just returned from Google sign-in.
+ */
+export const handleGoogleRedirectResult = async (): Promise<void> => {
+  try {
+    const authInstance = getAuth();
+    const result = await getRedirectResult(authInstance);
+    if (!result) return;
+    const credential = GoogleAuthProvider.credentialFromResult(result);
+    const token = credential?.accessToken ?? null;
+    if (token) {
+      useAuthStore.getState().setGoogleAccessToken(token);
+    }
+  } catch (err) {
+    console.warn('Google redirect result error:', err);
+  }
 };
 
 /** Gets a stored Google access token, or returns null if not available. */
