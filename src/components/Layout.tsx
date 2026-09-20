@@ -83,9 +83,8 @@ export default function Layout() {
       <header className="px-5 py-3 flex justify-between items-center glass-panel sticky top-0 z-30 shrink-0">
         {/* Logo + Greeting */}
         <div className="flex flex-col">
-          <div className="flex items-center gap-1.5 mb-0.5">
-            <Sparkles size={14} className="text-[var(--color-primary)]" />
-            <span className="text-xs font-bold gradient-text tracking-widest uppercase">Nexa</span>
+          <div className="flex items-center mb-1">
+            <img src="/logo.svg" alt="Nexa" className="h-4" />
           </div>
           <p className="text-sm font-semibold text-[var(--color-text-main)] leading-none">
             {getGreeting()}, {user?.name?.split(' ')[0] ?? 'there'} 👋

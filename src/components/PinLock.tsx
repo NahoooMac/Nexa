@@ -58,10 +58,7 @@ export default function PinLock() {
 
       {/* Logo */}
       <div className="flex flex-col items-center gap-3 mb-10 relative z-10">
-        <div className="w-16 h-16 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-2xl flex items-center justify-center shadow-xl shadow-indigo-500/30">
-          <Sparkles size={30} className="text-white" />
-        </div>
-        <h1 className="text-2xl font-black gradient-text">Nexa</h1>
+        <img src="/logo.svg" alt="Nexa" className="h-10 drop-shadow-xl" />
         <p className="text-sm text-[var(--color-text-muted)]">Enter your PIN to continue</p>
       </div>
 

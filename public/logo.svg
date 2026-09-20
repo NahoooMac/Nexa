@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 500 120" width="500" height="120">
+  <style>
+    .letter { fill: #ffffff; }
+  </style>
+  <!-- N -->
+  <path class="letter" d="M 50 90 L 50 30 L 80 30 L 120 75 L 120 30 L 140 30 L 140 90 L 110 90 L 70 45 L 70 90 Z" />
+  <!-- E -->
+  <path class="letter" d="M 170 30 L 240 30 L 230 45 L 170 45 Z" />
+  <path class="letter" d="M 170 52 L 225 52 L 215 67 L 170 67 Z" />
+  <path class="letter" d="M 170 75 L 240 75 L 230 90 L 170 90 Z" />
+  <!-- X (Star) -->
+  <path class="letter" d="M 310 10 L 325 50 L 370 55 L 325 60 L 310 100 L 295 60 L 250 55 L 295 50 Z" />
+  <!-- A -->
+  <path class="letter" d="M 430 30 L 390 90 L 415 90 L 430 65 L 445 90 L 470 90 Z" />
+</svg>
