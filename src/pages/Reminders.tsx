@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { Card } from '../components/ui/Card';
 import { Bell, Plus, Trash2, Calendar, Clock, CheckCircle2, RefreshCw } from 'lucide-react';
 import { dbHelpers } from '../lib/db';
-import { pushToGoogleCalendar } from '../lib/calendarSync';
+
 import { scheduleReminders, requestNotificationPermission } from '../lib/notifications';
 
 type Reminder = {
