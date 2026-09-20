@@ -1,7 +1,6 @@
 import { lazy, Suspense } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { useEffect, useCallback } from 'react';
-import { handleGoogleRedirectResult } from './lib/calendarSync';
 
 // Eagerly load auth + layout (needed on first paint)
 import Layout from './components/Layout';
@@ -73,11 +72,6 @@ function PinLockWrapper({ children }: { children: React.ReactNode }) {
 
 function App() {
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
-
-  // Capture Google redirect result on every app boot (fires after Google OAuth redirect)
-  useEffect(() => {
-    handleGoogleRedirectResult();
-  }, []);
 
   return (
     <PinLockWrapper>

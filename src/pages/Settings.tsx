@@ -30,7 +30,6 @@ export default function Settings() {
   const navigate = useNavigate();
 
   const [notifications, setNotifications] = useState(hasNotificationPermission());
-  const [calendarConnecting, setCalendarConnecting] = useState(false);
   const [notifRequesting, setNotifRequesting] = useState(false);
   const [pinMode, setPinMode] = useState<PinMode | null>(null);
   const [fcmToken, setFcmToken] = useState<string | null>(null);
@@ -48,14 +47,12 @@ export default function Settings() {
   };
 
   const handleConnectCalendar = async () => {
-    setCalendarConnecting(true);
     try {
-      // signInWithGoogle now uses redirect — page will navigate to Google and come back
+      // Call popup synchronously to prevent browser popup blocker
       await signInWithGoogle();
-      // The result is handled in App.tsx via handleGoogleRedirectResult on boot
+      alert('✅ Google Calendar connected! Reminders will include phone popup notifications.');
     } catch {
-      alert('Failed to start Google sign-in. Please try again.');
-      setCalendarConnecting(false);
+      alert('Failed to connect Google Calendar. Please try again.');
     }
   };
 
@@ -147,10 +144,9 @@ export default function Settings() {
             </div>
             <button
               onClick={handleConnectCalendar}
-              disabled={calendarConnecting}
-              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${googleAccessToken ? 'bg-emerald-500/10 text-emerald-400' : 'bg-[var(--color-primary)] text-white'} disabled:opacity-60`}
+              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${googleAccessToken ? 'bg-emerald-500/10 text-emerald-400' : 'bg-[var(--color-primary)] text-white'}`}
             >
-              {calendarConnecting ? 'Connecting…' : googleAccessToken ? 'Reconnect' : 'Connect'}
+              {googleAccessToken ? 'Reconnect' : 'Connect'}
             </button>
           </div>
         </Card>

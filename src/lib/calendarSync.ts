@@ -1,42 +1,26 @@
-import { getAuth, GoogleAuthProvider, signInWithRedirect, getRedirectResult } from 'firebase/auth';
+import { getAuth, GoogleAuthProvider, signInWithPopup } from 'firebase/auth';
 import { useAuthStore } from '../store/authStore';
 
 const CALENDAR_SCOPE = 'https://www.googleapis.com/auth/calendar.events';
 
 /**
- * Initiates a Google Sign-In redirect. The page will reload and the result
- * is captured in handleGoogleRedirectResult() on the next load.
+ * Sign in with Google using a popup. 
+ * MUST be called directly in the onClick handler without any preceding `await` or state updates
+ * to prevent the browser's popup blocker from blocking it.
  */
-export const signInWithGoogle = async (): Promise<void> => {
+export const signInWithGoogle = async (): Promise<string | null> => {
   const authInstance = getAuth();
   const provider = new GoogleAuthProvider();
   provider.addScope(CALENDAR_SCOPE);
-  // signInWithRedirect never throws popup-blocked — it navigates the whole page.
-  await signInWithRedirect(authInstance, provider);
-};
 
-/**
- * Must be called once on app boot (e.g. in App.tsx).
- * It reads the Google redirect result if the user just came back from Google auth.
- * Returns the access token if a redirect just completed, or null otherwise.
- */
-export const handleGoogleRedirectResult = async (): Promise<string | null> => {
-  try {
-    const authInstance = getAuth();
-    const result = await getRedirectResult(authInstance);
-    if (!result) return null;
+  const result = await signInWithPopup(authInstance, provider);
+  const credential = GoogleAuthProvider.credentialFromResult(result);
+  const token = credential?.accessToken ?? null;
 
-    const credential = GoogleAuthProvider.credentialFromResult(result);
-    const token = credential?.accessToken ?? null;
-    if (token) {
-      useAuthStore.getState().setGoogleAccessToken(token);
-    }
-    return token;
-  } catch (err: any) {
-    // If redirect result fails (e.g. wrong domain), swallow silently
-    console.error('Google redirect result error:', err);
-    return null;
+  if (token) {
+    useAuthStore.getState().setGoogleAccessToken(token);
   }
+  return token;
 };
 
 /** Gets a stored Google access token, or returns null if not available. */
