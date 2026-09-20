@@ -50,6 +50,9 @@ export default defineConfig({
     }),
   ],
   build: {
+    // Disable Vite's automatic module preloading to stop Chrome console warnings
+    // about modules being preloaded but not used immediately
+    modulePreload: false,
     // Split large vendor libs into separate cached chunks
     rollupOptions: {
       output: {
