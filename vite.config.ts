@@ -10,9 +10,15 @@ export default defineConfig({
     react(),
     VitePWA({
       registerType: 'autoUpdate',
-      // Cache all JS/CSS chunks for instant offline & repeat visits
+      // Don't let workbox try to precache the service worker files themselves
+      filename: 'sw.js',
       workbox: {
         globPatterns: ['**/*.{js,css,html,svg,png,ico,woff2}'],
+        // Exclude the firebase messaging service worker from precaching
+        globIgnores: ['firebase-messaging-sw.js', 'workbox-*.js'],
+        // Ensures SPA navigation never 404s
+        navigateFallback: '/index.html',
+        navigateFallbackDenylist: [/^\/api/, /firebase-messaging-sw\.js/],
         runtimeCaching: [
           {
             // Cache Google Fonts stylesheet
@@ -37,8 +43,8 @@ export default defineConfig({
         display: 'standalone',
         start_url: '/',
         icons: [
-          { src: '/vite.svg', sizes: '192x192', type: 'image/svg+xml' },
-          { src: '/vite.svg', sizes: '512x512', type: 'image/svg+xml' },
+          { src: '/favicon.svg', sizes: '192x192', type: 'image/svg+xml' },
+          { src: '/favicon.svg', sizes: '512x512', type: 'image/svg+xml' },
         ],
       },
     }),
