@@ -91,7 +91,17 @@ export async function initializeFCM(): Promise<string | null> {
       return null;
     }
 
-    const token = await getToken(messaging, { vapidKey });
+    // Register the firebase messaging service worker as an ES module
+    // (avoids the /__/firebase/init.json 404 from the compat SDK)
+    let swRegistration: ServiceWorkerRegistration | undefined;
+    if ('serviceWorker' in navigator) {
+      swRegistration = await navigator.serviceWorker.register(
+        '/firebase-messaging-sw.js',
+        { type: 'module' }
+      );
+    }
+
+    const token = await getToken(messaging, { vapidKey, serviceWorkerRegistration: swRegistration });
 
     // Handle foreground messages — show as browser notification
     onMessage(messaging, (payload) => {

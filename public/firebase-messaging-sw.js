@@ -1,33 +1,34 @@
-// Firebase Messaging Service Worker
-// This file MUST be at the root of the public directory (served as /firebase-messaging-sw.js)
-// It enables background push notifications when the app tab is not in focus.
+// Firebase Messaging Service Worker — ESM version
+// Uses the modular SDK so it does NOT request /__/firebase/init.json
+// This file must be served from the root (public/firebase-messaging-sw.js)
 
-importScripts('https://www.gstatic.com/firebasejs/11.0.0/firebase-app-compat.js');
-importScripts('https://www.gstatic.com/firebasejs/11.0.0/firebase-messaging-compat.js');
+import { initializeApp } from 'https://www.gstatic.com/firebasejs/11.0.0/firebase-app.js';
+import { getMessaging, onBackgroundMessage } from 'https://www.gstatic.com/firebasejs/11.0.0/firebase-messaging-sw.js';
 
 // NOTE: These values are intentionally hardcoded in the service worker
 // because it runs outside the Vite/module bundler environment.
-// They are NOT secret — Firebase API keys are safe to expose client-side.
-firebase.initializeApp({
-  apiKey: 'AIzaSyBgkLFXc2oWppSauu-4nAYsyZHhxZctiGk',
-  authDomain: 'shebacine.firebaseapp.com',
-  projectId: 'shebacine',
-  storageBucket: 'shebacine.firebasestorage.app',
-  messagingSenderId: '255641134678',
-  appId: '1:255641134678:web:836ea32220e0f678537df7',
-});
+// Firebase client-side API keys are safe to expose publicly.
+const firebaseConfig = {
+  apiKey: self.__FIREBASE_API_KEY__ || '',
+  authDomain: self.__FIREBASE_AUTH_DOMAIN__ || '',
+  projectId: self.__FIREBASE_PROJECT_ID__ || '',
+  storageBucket: self.__FIREBASE_STORAGE_BUCKET__ || '',
+  messagingSenderId: self.__FIREBASE_MESSAGING_SENDER_ID__ || '',
+  appId: self.__FIREBASE_APP_ID__ || '',
+};
 
-const messaging = firebase.messaging();
+const app = initializeApp(firebaseConfig);
+const messaging = getMessaging(app);
 
 // Handle background messages (app tab is in background or closed)
-messaging.onBackgroundMessage((payload) => {
+onBackgroundMessage(messaging, (payload) => {
   const title = payload.notification?.title || 'Nexa Reminder';
   const body = payload.notification?.body || 'You have a new notification';
 
   self.registration.showNotification(title, {
     body,
-    icon: '/vite.svg',
-    badge: '/vite.svg',
+    icon: '/favicon.svg',
+    badge: '/favicon.svg',
     tag: payload.data?.tag || 'nexa-notification',
     requireInteraction: false,
     silent: false,
