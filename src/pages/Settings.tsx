@@ -50,11 +50,11 @@ export default function Settings() {
   const handleConnectCalendar = async () => {
     setCalendarConnecting(true);
     try {
+      // signInWithGoogle now uses redirect — page will navigate to Google and come back
       await signInWithGoogle();
-      alert('✅ Google Calendar connected! Reminders will include phone popup notifications.');
+      // The result is handled in App.tsx via handleGoogleRedirectResult on boot
     } catch {
-      alert('Failed to connect Google Calendar. Please try again.');
-    } finally {
+      alert('Failed to start Google sign-in. Please try again.');
       setCalendarConnecting(false);
     }
   };

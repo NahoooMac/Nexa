@@ -1,32 +1,52 @@
-import { getAuth, GoogleAuthProvider, signInWithPopup } from 'firebase/auth';
+import { getAuth, GoogleAuthProvider, signInWithRedirect, getRedirectResult } from 'firebase/auth';
 import { useAuthStore } from '../store/authStore';
 
 const CALENDAR_SCOPE = 'https://www.googleapis.com/auth/calendar.events';
 
 /**
- * Gets a Google access token, using the stored one if still valid,
- * or re-authenticating if not.
+ * Initiates a Google Sign-In redirect. The page will reload and the result
+ * is captured in handleGoogleRedirectResult() on the next load.
  */
-async function getGoogleToken(): Promise<string> {
-  const stored = useAuthStore.getState().googleAccessToken;
-  if (stored) return stored;
-
+export const signInWithGoogle = async (): Promise<void> => {
   const authInstance = getAuth();
   const provider = new GoogleAuthProvider();
   provider.addScope(CALENDAR_SCOPE);
+  // signInWithRedirect never throws popup-blocked — it navigates the whole page.
+  await signInWithRedirect(authInstance, provider);
+};
 
-  const result = await signInWithPopup(authInstance, provider);
-  const credential = GoogleAuthProvider.credentialFromResult(result);
+/**
+ * Must be called once on app boot (e.g. in App.tsx).
+ * It reads the Google redirect result if the user just came back from Google auth.
+ * Returns the access token if a redirect just completed, or null otherwise.
+ */
+export const handleGoogleRedirectResult = async (): Promise<string | null> => {
+  try {
+    const authInstance = getAuth();
+    const result = await getRedirectResult(authInstance);
+    if (!result) return null;
 
-  if (!credential?.accessToken) {
-    throw new Error('Failed to retrieve Google OAuth token.');
+    const credential = GoogleAuthProvider.credentialFromResult(result);
+    const token = credential?.accessToken ?? null;
+    if (token) {
+      useAuthStore.getState().setGoogleAccessToken(token);
+    }
+    return token;
+  } catch (err: any) {
+    // If redirect result fails (e.g. wrong domain), swallow silently
+    console.error('Google redirect result error:', err);
+    return null;
   }
+};
 
-  useAuthStore.getState().setGoogleAccessToken(credential.accessToken);
-  return credential.accessToken;
+/** Gets a stored Google access token, or returns null if not available. */
+async function getGoogleToken(): Promise<string> {
+  const stored = useAuthStore.getState().googleAccessToken;
+  if (stored) return stored;
+  throw new Error('Google Calendar not connected. Please connect it in Settings.');
 }
 
-/** Push a task/reminder as an event to Google Calendar with popup + email reminders. */
+/** Push a task/reminder as an event to Google Calendar. */
 export const pushToGoogleCalendar = async (task: {
   title: string;
   dueDate: string;
@@ -58,7 +78,6 @@ export const pushToGoogleCalendar = async (task: {
     description: task.description ?? 'Synced from Nexa Personal OS.',
     start: { dateTime: startDate.toISOString() },
     end: { dateTime: endDate.toISOString() },
-    // Native Google Calendar reminders — these trigger phone notifications
     reminders: {
       useDefault: false,
       overrides: [
@@ -80,7 +99,6 @@ export const pushToGoogleCalendar = async (task: {
   if (!response.ok) {
     const errorText = await response.text();
     console.error('Google Calendar API Error:', errorText);
-    // Token may be expired — clear it and retry once
     useAuthStore.getState().setGoogleAccessToken(null);
     throw new Error('Failed to create event in Google Calendar. API Error: ' + response.statusText);
   }
@@ -106,21 +124,4 @@ export const deleteFromGoogleCalendar = async (eventId: string): Promise<void> =
   } catch {
     // Silently ignore — calendar event deletion is best-effort
   }
-};
-
-/** Sign in with Google and request Calendar scope, returning the access token. */
-export const signInWithGoogle = async (): Promise<string | null> => {
-  const authInstance = getAuth();
-  const provider = new GoogleAuthProvider();
-  provider.addScope(CALENDAR_SCOPE);
-
-  const result = await signInWithPopup(authInstance, provider);
-  const credential = GoogleAuthProvider.credentialFromResult(result);
-  const token = credential?.accessToken ?? null;
-
-  if (token) {
-    useAuthStore.getState().setGoogleAccessToken(token);
-  }
-
-  return token;
 };
