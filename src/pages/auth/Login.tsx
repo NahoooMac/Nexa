@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { signInWithEmailAndPassword } from 'firebase/auth';
-import { auth } from '../../lib/firebase';
+import { auth, getFirebaseErrorMessage } from '../../lib/firebase';
 import { signInWithGoogle } from '../../lib/calendarSync';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
@@ -24,7 +24,7 @@ export default function Login() {
       await signInWithEmailAndPassword(auth, email, password);
       navigate('/');
     } catch (err: any) {
-      setError(err.message || 'Failed to sign in');
+      setError(getFirebaseErrorMessage(err));
     } finally {
       setIsLoading(false);
     }
@@ -37,7 +37,7 @@ export default function Login() {
       await signInWithGoogle();
       navigate('/');
     } catch (err: any) {
-      setError(err.message || 'Google sign-in failed');
+      setError(getFirebaseErrorMessage(err));
     } finally {
       setIsGoogleLoading(false);
     }

@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { createUserWithEmailAndPassword, updateProfile } from 'firebase/auth';
-import { auth } from '../../lib/firebase';
+import { auth, getFirebaseErrorMessage } from '../../lib/firebase';
 import { signInWithGoogle } from '../../lib/calendarSync';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
@@ -28,7 +28,7 @@ export default function Register() {
       await updateProfile(cred.user, { displayName: name });
       navigate('/');
     } catch (err: any) {
-      setError(err.message || 'Failed to create account');
+      setError(getFirebaseErrorMessage(err));
     } finally { setIsLoading(false); }
   };
 
@@ -39,7 +39,7 @@ export default function Register() {
       await signInWithGoogle();
       navigate('/');
     } catch (err: any) {
-      setError(err.message || 'Google sign-up failed');
+      setError(getFirebaseErrorMessage(err));
     } finally {
       setIsGoogleLoading(false);
     }
