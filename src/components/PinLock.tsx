@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { usePinStore } from '../store/pinStore';
 import { useAuthStore } from '../store/authStore';
-import { Sparkles, Delete } from 'lucide-react';
+import { Delete } from 'lucide-react';
 
 const DIGITS = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '', '0', '⌫'];
 
@@ -58,7 +58,7 @@ export default function PinLock() {
 
       {/* Logo */}
       <div className="flex flex-col items-center gap-3 mb-10 relative z-10">
-        <img src="/logo.svg" alt="Nexa" className="h-10 drop-shadow-xl" />
+        <img src="/main logo.png" alt="Nexa" className="h-16 drop-shadow-xl" />
         <p className="text-sm text-[var(--color-text-muted)]">Enter your PIN to continue</p>
       </div>
 

@@ -99,7 +99,7 @@ export default function Dashboard() {
         <div>
           <div className="flex items-center justify-between mb-2.5">
             <span className="text-[10px] font-bold text-[var(--color-text-muted)] uppercase tracking-widest flex items-center gap-1.5">
-              ✨ AI Insights
+              <img src="/favicon.png" className="w-3 h-3 object-contain" alt="sparkle" /> AI Insights
             </span>
             <Link to="/insights" className="text-[10px] text-[var(--color-primary)] font-semibold">View all</Link>
           </div>

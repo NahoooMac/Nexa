@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Card } from '../components/ui/Card';
 import {
-  User, Moon, Bell, LogOut, ChevronRight, Sparkles, Shield, Info,
+  User, Moon, Bell, LogOut, ChevronRight, Shield, Info,
   Calendar, Download, Lock, Timer, KeyRound, CheckCircle2, Smartphone,
 } from 'lucide-react';
 import { useAuthStore } from '../store/authStore';
@@ -120,7 +120,7 @@ export default function Settings() {
           <div className="font-black text-lg truncate">{user?.name || 'Nexa User'}</div>
           <div className="text-sm text-[var(--color-text-muted)] truncate">{user?.email}</div>
           <div className="flex items-center gap-1 mt-1.5">
-            <Sparkles size={11} className="text-indigo-400" />
+            <img src="/favicon.png" className="w-3 h-3" alt="sparkle" />
             <span className="text-[10px] font-bold text-indigo-400 uppercase tracking-wider">Nexa Member</span>
           </div>
         </div>
@@ -295,7 +295,7 @@ export default function Settings() {
               <div className="w-9 h-9 rounded-xl bg-indigo-500/10 flex items-center justify-center"><Moon size={17} className="text-indigo-400" /></div>
               <div>
                 <div className="font-semibold text-sm">Dark Mode</div>
-                <div className="text-xs text-[var(--color-text-muted)]">Always on — your vibe ✨</div>
+                <div className="text-xs text-[var(--color-text-muted)] flex items-center gap-1">Always on — your vibe <img src="/favicon.png" className="w-3 h-3" alt="sparkle" /></div>
               </div>
             </div>
             <div className="w-12 h-6 rounded-full relative bg-indigo-500">

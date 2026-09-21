@@ -26,34 +26,42 @@ const WORKOUT_PLANS = [
 ];
 
 const EXERCISE_LIBRARY = [
-  { name: 'Push-up', muscle: 'Chest', emoji: '💪' },
-  { name: 'Pull-up', muscle: 'Back', emoji: '🏋️' },
-  { name: 'Squat', muscle: 'Legs', emoji: '🦵' },
-  { name: 'Deadlift', muscle: 'Full Body', emoji: '⚡' },
-  { name: 'Plank', muscle: 'Core', emoji: '🧘' },
-  { name: 'Lunges', muscle: 'Legs', emoji: '🚶' },
-  { name: 'Burpees', muscle: 'Full Body', emoji: '🔥' },
-  { name: 'Bench Press', muscle: 'Chest', emoji: '🏋️' },
-  { name: 'Shoulder Press', muscle: 'Shoulders', emoji: '💪' },
-  { name: 'Bicep Curl', muscle: 'Arms', emoji: '💪' },
-  { name: 'Tricep Dip', muscle: 'Arms', emoji: '💪' },
-  { name: 'Running', muscle: 'Cardio', emoji: '🏃' },
+  { name: 'Push-up', muscle: 'Chest', emoji: '💪', image: 'https://images.unsplash.com/photo-1598971639058-fab3c3109a00?w=500&q=80' },
+  { name: 'Pull-up', muscle: 'Back', emoji: '🏋️', image: 'https://images.unsplash.com/photo-1598971484999-6934f40a4ce9?w=500&q=80' },
+  { name: 'Squat', muscle: 'Legs', emoji: '🦵', image: 'https://images.unsplash.com/photo-1574680096145-d05b474e2155?w=500&q=80' },
+  { name: 'Deadlift', muscle: 'Full Body', emoji: '⚡', image: 'https://images.unsplash.com/photo-1517836357463-d25dfeac3438?w=500&q=80' },
+  { name: 'Plank', muscle: 'Core', emoji: '🧘', image: 'https://images.unsplash.com/photo-1566241440091-ec10de8db2e1?w=500&q=80' },
+  { name: 'Lunges', muscle: 'Legs', emoji: '🚶', image: 'https://images.unsplash.com/photo-1434682881908-b43d0467b798?w=500&q=80' },
+  { name: 'Burpees', muscle: 'Full Body', emoji: '🔥', image: 'https://images.unsplash.com/photo-1517963879433-6ad2b056d712?w=500&q=80' },
+  { name: 'Bench Press', muscle: 'Chest', emoji: '🏋️', image: 'https://images.unsplash.com/photo-1571019614242-c5c5dee9f50b?w=500&q=80' },
+  { name: 'Shoulder Press', muscle: 'Shoulders', emoji: '💪', image: 'https://images.unsplash.com/photo-1581009146145-b5ef050c2e1e?w=500&q=80' },
+  { name: 'Bicep Curl', muscle: 'Arms', emoji: '💪', image: 'https://images.unsplash.com/photo-1581009137042-c552e485697a?w=500&q=80' },
+  { name: 'Tricep Dip', muscle: 'Arms', emoji: '💪', image: 'https://images.unsplash.com/photo-1534438327276-14e5300c3a48?w=500&q=80' },
+  { name: 'Running', muscle: 'Cardio', emoji: '🏃', image: 'https://images.unsplash.com/photo-1502696843470-59b4c1075bb3?w=500&q=80' },
 ];
 
-function LogWorkoutModal({ onClose, onAdd, initialTitle = '' }: { onClose: () => void; onAdd: (d: any) => Promise<void>; initialTitle?: string }) {
+function LogWorkoutModal({ onClose, onAdd, initialTitle = '', initialExercises = '', initialNotes = '' }: { onClose: () => void; onAdd: (d: any) => Promise<void>; initialTitle?: string; initialExercises?: string; initialNotes?: string }) {
   const [title, setTitle] = useState(initialTitle);
   const [duration, setDuration] = useState('');
-  const [exercises, setExercises] = useState('');
-  const [notes, setNotes] = useState('');
+  const [exercises, setExercises] = useState(initialExercises);
+  const [notes, setNotes] = useState(initialNotes);
+  const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
+  const [time, setTime] = useState(new Date().toTimeString().substring(0, 5));
+  const [syncToCalendar, setSyncToCalendar] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const submit = async (e: React.FormEvent) => {
     e.preventDefault(); setIsLoading(true);
-    try { await onAdd({ title, duration: parseInt(duration), exercises: parseInt(exercises) || 0, notes: notes || undefined }); onClose(); }
-    catch { alert('Failed to log workout'); } finally { setIsLoading(false); }
+    try {
+      const data: any = { title, duration: parseInt(duration), exercises: parseInt(exercises) || 0, date, time, syncToCalendar };
+      if (notes) data.notes = notes;
+      await onAdd(data);
+      onClose();
+    }
+    catch (err) { console.error(err); alert('Failed to log workout'); } finally { setIsLoading(false); }
   };
   return (
-    <div className="fixed inset-0 bg-black/70 z-50 flex flex-col justify-end backdrop-blur-md" onClick={e => { if (e.target === e.currentTarget) onClose(); }}>
-      <div className="bg-[var(--color-surface)] rounded-t-3xl w-full max-w-md mx-auto p-6 animate-slide-up shadow-2xl">
+    <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4 backdrop-blur-md" onClick={e => { if (e.target === e.currentTarget) onClose(); }}>
+      <div className="bg-[var(--color-surface)] rounded-3xl w-full max-w-md mx-auto p-6 animate-slide-up shadow-2xl">
         <h2 className="text-xl font-black mb-5">Log Workout</h2>
         <form onSubmit={submit} className="flex flex-col gap-4">
           <input value={title} onChange={e => setTitle(e.target.value)} required placeholder="Workout name" className="w-full bg-[var(--color-surface-2)] border border-[var(--color-border)] text-white text-sm rounded-xl px-4 py-3 focus:outline-none focus:border-[var(--color-primary)] transition-colors" />
@@ -68,6 +76,20 @@ function LogWorkoutModal({ onClose, onAdd, initialTitle = '' }: { onClose: () =>
             </div>
           </div>
           <textarea value={notes} onChange={e => setNotes(e.target.value)} placeholder="Notes (optional)" rows={3} className="w-full bg-[var(--color-surface-2)] border border-[var(--color-border)] text-white text-sm rounded-xl px-4 py-3 focus:outline-none focus:border-[var(--color-primary)] transition-colors resize-none" />
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wider mb-1.5">Date</label>
+              <input value={date} onChange={e => setDate(e.target.value)} required type="date" className="w-full bg-[var(--color-surface-2)] border border-[var(--color-border)] text-white text-sm rounded-xl px-4 py-3 focus:outline-none focus:border-[var(--color-primary)] transition-colors" />
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wider mb-1.5">Time</label>
+              <input value={time} onChange={e => setTime(e.target.value)} required type="time" className="w-full bg-[var(--color-surface-2)] border border-[var(--color-border)] text-white text-sm rounded-xl px-4 py-3 focus:outline-none focus:border-[var(--color-primary)] transition-colors" />
+            </div>
+          </div>
+          <label className="flex items-center gap-2 cursor-pointer mt-1">
+            <input type="checkbox" checked={syncToCalendar} onChange={e => setSyncToCalendar(e.target.checked)} className="w-4 h-4 rounded border-[var(--color-border)] text-[var(--color-primary)] bg-[var(--color-surface-2)] focus:ring-[var(--color-primary)] focus:ring-offset-0" />
+            <span className="text-sm font-semibold text-[var(--color-text-main)]">Sync to Reminders / Calendar</span>
+          </label>
           <div className="flex gap-3 mt-2">
             <button type="button" onClick={onClose} className="flex-1 py-3 rounded-2xl bg-[var(--color-surface-2)] text-sm font-semibold">Cancel</button>
             <button type="submit" disabled={isLoading} className="flex-1 py-3 rounded-2xl bg-gradient-to-r from-rose-500 to-pink-600 text-white text-sm font-bold shadow-lg shadow-rose-500/30 disabled:opacity-60">{isLoading ? 'Saving...' : 'Log It'}</button>
@@ -80,12 +102,25 @@ function LogWorkoutModal({ onClose, onAdd, initialTitle = '' }: { onClose: () =>
 
 const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
+const getWorkoutImage = (title: string) => {
+  const t = title.toLowerCase();
+  if (t.includes('cardio') || t.includes('run')) return 'https://images.unsplash.com/photo-1502696843470-59b4c1075bb3?w=1000&q=80';
+  if (t.includes('leg') || t.includes('squat')) return 'https://images.unsplash.com/photo-1574680096145-d05b474e2155?w=1000&q=80';
+  if (t.includes('pull') || t.includes('back')) return 'https://images.unsplash.com/photo-1598971484999-6934f40a4ce9?w=1000&q=80';
+  if (t.includes('push') || t.includes('chest') || t.includes('bench')) return 'https://images.unsplash.com/photo-1571019614242-c5c5dee9f50b?w=1000&q=80';
+  if (t.includes('yoga') || t.includes('stretch') || t.includes('plank')) return 'https://images.unsplash.com/photo-1566241440091-ec10de8db2e1?w=1000&q=80';
+  if (t.includes('hiit') || t.includes('burpee')) return 'https://images.unsplash.com/photo-1517963879433-6ad2b056d712?w=1000&q=80';
+  return 'https://images.unsplash.com/photo-1534438327276-14e5300c3a48?w=1000&q=80'; // general gym
+};
+
 export default function Workouts() {
   const [workouts, setWorkouts] = useState<Workout[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<FilterTab>('today');
   const [showLogModal, setShowLogModal] = useState(false);
   const [logTitle, setLogTitle] = useState('');
+  const [logExercises, setLogExercises] = useState('');
+  const [logNotes, setLogNotes] = useState('');
 
   useEffect(() => {
     try {
@@ -121,7 +156,7 @@ export default function Workouts() {
           <p className="text-[var(--color-text-muted)] text-sm mt-0.5">Stay active and strong</p>
         </div>
         <button
-          onClick={() => { setLogTitle(''); setShowLogModal(true); }}
+          onClick={() => { setLogTitle(''); setLogExercises(''); setLogNotes(''); setShowLogModal(true); }}
           className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-gradient-to-r from-rose-500 to-pink-600 text-white text-xs font-bold shadow-lg shadow-rose-500/30 press-effect"
         >
           <Plus size={14} /> Log
@@ -163,7 +198,7 @@ export default function Workouts() {
           {latestWorkout && (
             <Card className="p-0 overflow-hidden relative group">
               <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/30 to-transparent z-10" />
-              <img src="https://images.unsplash.com/photo-1571019614242-c5c5dee9f50b?q=80&w=2070&auto=format&fit=crop" alt="Workout" className="w-full h-48 object-cover group-hover:scale-105 transition-transform duration-500" />
+              <img src={getWorkoutImage(latestWorkout.title)} alt="Workout" className="w-full h-48 object-cover group-hover:scale-105 transition-transform duration-500" onError={(e) => { const t = e.currentTarget; if (!t.dataset.fallback) { t.dataset.fallback = 'true'; t.src = 'https://images.unsplash.com/photo-1534438327276-14e5300c3a48?w=1000&q=80'; } }} />
               <div className="absolute bottom-0 left-0 p-5 z-20 w-full">
                 <div className="flex justify-between items-end">
                   <div>
@@ -212,28 +247,34 @@ export default function Workouts() {
       {activeTab === 'plans' && (
         <div className="flex flex-col gap-3">
           <p className="text-xs text-[var(--color-text-muted)]">Tap a plan to start logging it as today's workout.</p>
-          {WORKOUT_PLANS.map(plan => (
-            <Card key={plan.name} className="group cursor-pointer" onClick={() => { setLogTitle(plan.name); setShowLogModal(true); }}>
-              <div className="flex items-start gap-3 mb-3">
-                <span className="text-2xl">{plan.emoji}</span>
+          <div className="grid grid-cols-2 gap-3">
+            {WORKOUT_PLANS.map(plan => (
+              <Card key={plan.name} className="group cursor-pointer flex flex-col justify-between" onClick={() => { setLogTitle(plan.name); setLogExercises(plan.exercises.length.toString()); setLogNotes(plan.exercises.join('\n')); setShowLogModal(true); }}>
                 <div>
-                  <h3 className="font-black">{plan.name}</h3>
-                  <p className="text-xs text-[var(--color-text-muted)]">{plan.exercises.length} exercises</p>
-                </div>
-                <div className="ml-auto">
-                  <span className="text-xs font-bold text-[var(--color-primary)] opacity-0 group-hover:opacity-100 transition-opacity">Start →</span>
-                </div>
-              </div>
-              <div className="flex flex-col gap-1.5">
-                {plan.exercises.map(ex => (
-                  <div key={ex} className="flex items-center gap-2 text-xs text-[var(--color-text-muted)]">
-                    <div className="w-1 h-1 rounded-full bg-[var(--color-primary)] shrink-0" />
-                    {ex}
+                  <div className="flex justify-between items-start mb-3">
+                    <span className="text-2xl">{plan.emoji}</span>
+                    <span className="text-[10px] font-bold text-[var(--color-primary)] opacity-0 group-hover:opacity-100 transition-opacity">Start →</span>
                   </div>
-                ))}
-              </div>
-            </Card>
-          ))}
+                  <h3 className="font-black text-sm leading-tight mb-0.5">{plan.name}</h3>
+                  <p className="text-[10px] text-[var(--color-text-muted)] mb-2.5">{plan.exercises.length} exercises</p>
+                  
+                  <div className="flex flex-col gap-1.5 mt-auto">
+                    {plan.exercises.slice(0, 3).map(ex => (
+                      <div key={ex} className="flex items-center gap-1.5 text-[10px] text-[var(--color-text-muted)] truncate">
+                        <div className="w-1 h-1 rounded-full bg-[var(--color-primary)] shrink-0" />
+                        <span className="truncate">{ex}</span>
+                      </div>
+                    ))}
+                    {plan.exercises.length > 3 && (
+                      <div className="text-[9px] text-[var(--color-text-muted)] opacity-70 italic mt-0.5">
+                        +{plan.exercises.length - 3} more
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </Card>
+            ))}
+          </div>
         </div>
       )}
 
@@ -245,17 +286,20 @@ export default function Workouts() {
             {EXERCISE_LIBRARY.map(ex => (
               <Card
                 key={ex.name}
-                className="flex flex-col gap-2 cursor-pointer hover:border-[var(--color-primary)]/40 transition-all group"
-                onClick={() => { setLogTitle(ex.name); setShowLogModal(true); }}
+                className="p-0 overflow-hidden relative cursor-pointer group hover:border-[var(--color-primary)]/40 transition-all h-32"
+                onClick={() => { setLogTitle(ex.name); setLogExercises('1'); setLogNotes(''); setShowLogModal(true); }}
               >
-                <div className="flex items-center gap-2">
-                  <span className="text-xl">{ex.emoji}</span>
-                  <div>
-                    <p className="text-sm font-bold">{ex.name}</p>
-                    <p className="text-[10px] text-[var(--color-text-muted)]">{ex.muscle}</p>
+                <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/30 to-transparent z-10" />
+                <img src={ex.image} alt={ex.name} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" onError={(e) => { const t = e.currentTarget; if (!t.dataset.fallback) { t.dataset.fallback = 'true'; t.src = 'https://images.unsplash.com/photo-1534438327276-14e5300c3a48?w=1000&q=80'; } }} />
+                <div className="absolute bottom-0 left-0 p-3 z-20 w-full">
+                  <div className="flex justify-between items-end">
+                    <div>
+                      <p className="text-sm font-black text-white leading-tight">{ex.name}</p>
+                      <p className="text-[10px] text-gray-300 font-semibold uppercase tracking-wider mt-0.5">{ex.muscle}</p>
+                    </div>
+                    <span className="text-xl opacity-80">{ex.emoji}</span>
                   </div>
                 </div>
-                <p className="text-[10px] text-[var(--color-primary)] opacity-0 group-hover:opacity-100 transition-opacity">Tap to log →</p>
               </Card>
             ))}
           </div>
@@ -302,7 +346,17 @@ export default function Workouts() {
         </div>
       )}
 
-      {showLogModal && <LogWorkoutModal initialTitle={logTitle} onClose={() => setShowLogModal(false)} onAdd={async d => { await dbHelpers.addWorkout(d); }} />}
+      {showLogModal && <LogWorkoutModal initialTitle={logTitle} initialExercises={logExercises} initialNotes={logNotes} onClose={() => setShowLogModal(false)} onAdd={async d => { 
+        await dbHelpers.addWorkout(d); 
+        if (d.syncToCalendar) {
+          await dbHelpers.addReminder({
+            title: `Workout: ${d.title}`,
+            description: d.notes,
+            dueDate: d.date,
+            dueTime: d.time,
+          });
+        }
+      }} />}
     </div>
   );
 }

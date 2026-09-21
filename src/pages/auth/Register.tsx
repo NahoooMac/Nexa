@@ -5,7 +5,7 @@ import { auth, getFirebaseErrorMessage } from '../../lib/firebase';
 import { signInWithGoogle } from '../../lib/calendarSync';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
-import { Eye, EyeOff, Sparkles } from 'lucide-react';
+import { Eye, EyeOff } from 'lucide-react';
 
 export default function Register() {
   const [name, setName] = useState('');
@@ -49,7 +49,7 @@ export default function Register() {
         <div className="w-full max-w-sm mx-auto flex flex-col gap-6 animate-fade-in">
           <div className="text-center">
             <div className="w-16 h-16 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-2xl mx-auto mb-5 flex items-center justify-center shadow-xl shadow-indigo-500/30">
-              <Sparkles size={30} className="text-white" />
+              <img src="/favicon.png" className="w-8 h-8 object-contain" alt="sparkle" />
             </div>
             <h1 className="text-3xl font-black mb-1 gradient-text">Nexa</h1>
             <p className="text-[var(--color-text-muted)] text-sm">Create your free account today</p>

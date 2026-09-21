@@ -5,7 +5,7 @@ import { auth, getFirebaseErrorMessage } from '../../lib/firebase';
 import { signInWithGoogle } from '../../lib/calendarSync';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
-import { Eye, EyeOff, Sparkles } from 'lucide-react';
+import { Eye, EyeOff } from 'lucide-react';
 
 export default function Login() {
   const [email, setEmail] = useState('');
@@ -51,7 +51,7 @@ export default function Login() {
           <div className="text-center">
             <div className="flex items-center justify-center gap-2 mb-5">
               <div className="w-14 h-14 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-2xl flex items-center justify-center shadow-xl shadow-indigo-500/30">
-                <Sparkles size={28} className="text-white" />
+                <img src="/favicon.png" className="w-7 h-7 object-contain" alt="sparkle" />
               </div>
             </div>
             <h1 className="text-3xl font-black mb-1 gradient-text">Nexa</h1>

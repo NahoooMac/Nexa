@@ -4,7 +4,7 @@ import { sendPasswordResetEmail } from 'firebase/auth';
 import { auth } from '../../lib/firebase';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
-import { KeyRound, ArrowLeft, Sparkles, CheckCircle2 } from 'lucide-react';
+import { KeyRound, ArrowLeft, CheckCircle2 } from 'lucide-react';
 
 export default function ForgotPassword() {
   const [email, setEmail] = useState('');
@@ -56,7 +56,7 @@ export default function ForgotPassword() {
                 <KeyRound size={28} className="text-white" />
               </div>
               <div className="flex items-center justify-center gap-1.5 mb-2">
-                <Sparkles size={13} className="text-[var(--color-primary)]" />
+                <img src="/favicon.png" className="w-3.5 h-3.5 object-contain" alt="sparkle" />
                 <span className="text-xs font-bold gradient-text tracking-widest uppercase">Nexa</span>
               </div>
               <h1 className="text-2xl font-black mb-1">Reset Password</h1>

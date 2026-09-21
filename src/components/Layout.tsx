@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { Outlet, NavLink, useNavigate, useLocation } from 'react-router-dom';
 import {
   Home, Target, CheckSquare, Wallet, Plus, LogOut, Menu, X,
-  BookOpen, Dumbbell, Settings as SettingsIcon, ChevronRight, Sparkles,
+  BookOpen, Dumbbell, Settings as SettingsIcon, ChevronRight,
   Bell, Brain,
 } from 'lucide-react';
 import { useAuthStore } from '../store/authStore';
@@ -84,7 +84,7 @@ export default function Layout() {
         {/* Logo + Greeting */}
         <div className="flex flex-col">
           <div className="flex items-center mb-1">
-            <img src="/logo.svg" alt="Nexa" className="h-4" />
+            <img src="/main logo.png" alt="Nexa" className="h-14" />
           </div>
           <p className="text-sm font-semibold text-[var(--color-text-main)] leading-none">
             {getGreeting()}, {user?.name?.split(' ')[0] ?? 'there'} 👋
@@ -146,7 +146,7 @@ export default function Layout() {
             {/* Drawer header */}
             <div className="px-5 py-5 flex justify-between items-center border-b border-[var(--color-border)]">
               <div className="flex items-center gap-2">
-                <Sparkles size={16} className="text-[var(--color-primary)]" />
+                <img src="/favicon.png" className="w-4 h-4 object-contain" alt="sparkle" />
                 <span className="font-bold gradient-text">More</span>
               </div>
               <button onClick={() => setIsDrawerOpen(false)} className="w-8 h-8 rounded-full flex items-center justify-center text-[var(--color-text-muted)] hover:text-white hover:bg-white/10 transition-all">

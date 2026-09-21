@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Card } from '../components/ui/Card';
-import { Sparkles, CheckSquare, Dumbbell, Wallet, BookOpen, Target, ChevronRight } from 'lucide-react';
+import { CheckSquare, Dumbbell, Wallet, BookOpen, Target, ChevronRight } from 'lucide-react';
 import { generateSuggestions, computeProductivityScore, type Suggestion } from '../lib/aiEngine';
 import { dbHelpers } from '../lib/db';
 import { useNavigate } from 'react-router-dom';
@@ -59,7 +59,7 @@ export default function AIInsights() {
     <div className="flex flex-col gap-5 animate-fade-in">
       <div>
         <h1 className="text-2xl font-black flex items-center gap-2">
-          <Sparkles size={20} className="text-[var(--color-primary)]" /> AI Insights
+          <img src="/favicon.png" className="w-5 h-5 object-contain" alt="sparkle" /> AI Insights
         </h1>
         <p className="text-[var(--color-text-muted)] text-sm mt-0.5">
           Personalized analysis for {user?.name?.split(' ')[0] ?? 'you'}
@@ -157,12 +157,12 @@ export default function AIInsights() {
       {/* All Suggestions */}
       <div>
         <h2 className="text-[10px] font-bold text-[var(--color-text-muted)] uppercase tracking-widest mb-3 px-1">
-          ✨ All Suggestions ({suggestions.length})
+          <img src="/favicon.png" className="w-4 h-4 object-contain inline-block mr-1" alt="sparkle" /> All Suggestions ({suggestions.length})
         </h2>
         <div className="flex flex-col gap-2.5">
           {suggestions.length === 0 ? (
             <div className="flex flex-col items-center py-12 text-[var(--color-text-muted)]">
-              <Sparkles size={36} className="mb-3 opacity-30" />
+              <img src="/favicon.png" className="w-9 h-9 object-contain mb-3 opacity-30" alt="sparkle" />
               <p className="font-semibold">You're doing great!</p>
               <p className="text-xs mt-1 text-[var(--color-text-subtle)]">No action items right now.</p>
             </div>

@@ -28,8 +28,9 @@ const AIInsights = lazy(() => import('./pages/AIInsights'));
 /** Minimal skeleton shown while a lazy page chunk loads */
 function PageLoader() {
   return (
-    <div className="flex flex-col items-center justify-center h-48 gap-3 animate-fade-in">
+    <div className="flex flex-col items-center justify-center h-[60vh] gap-4 animate-fade-in text-[var(--color-text-muted)]">
       <div className="w-8 h-8 border-2 border-[var(--color-primary)] border-t-transparent rounded-full animate-spin-slow" />
+      <span className="text-xs font-semibold uppercase tracking-widest">Loading...</span>
     </div>
   );
 }
