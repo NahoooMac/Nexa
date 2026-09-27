@@ -34,7 +34,20 @@ function AddTransactionModal({ onClose, onAdd }: { onClose: () => void; onAdd: (
     e.preventDefault();
     setIsLoading(true);
     try {
-      await onAdd({ title, amount: parseFloat(amount), type, category, date: new Date(date).toISOString() });
+      let finalAmount = 0;
+      try {
+        const sanitized = amount.replace(/[^-()\d/*+.]/g, '');
+        // eslint-disable-next-line no-new-func
+        finalAmount = new Function(`return ${sanitized || '0'}`)();
+      } catch {
+        finalAmount = parseFloat(amount);
+      }
+      if (isNaN(finalAmount) || finalAmount <= 0) {
+        alert('Please enter a valid amount');
+        setIsLoading(false);
+        return;
+      }
+      await onAdd({ title, amount: finalAmount, type, category, date: new Date(date).toISOString() });
       onClose();
     } catch { alert('Failed to add transaction'); }
     finally { setIsLoading(false); }
@@ -54,7 +67,7 @@ function AddTransactionModal({ onClose, onAdd }: { onClose: () => void; onAdd: (
             ))}
           </div>
           <input value={title} onChange={e => setTitle(e.target.value)} required placeholder="Description" className="w-full bg-[var(--color-surface-2)] border border-[var(--color-border)] text-white text-sm rounded-xl px-4 py-3 focus:outline-none focus:border-[var(--color-primary)] transition-colors" />
-          <input value={amount} onChange={e => setAmount(e.target.value)} required type="number" step="0.01" min="0.01" placeholder="0.00" className="w-full bg-[var(--color-surface-2)] border border-[var(--color-border)] text-white text-sm rounded-xl px-4 py-3 focus:outline-none focus:border-[var(--color-primary)] transition-colors" />
+          <input value={amount} onChange={e => setAmount(e.target.value)} required type="text" placeholder="0.00 (e.g. 21+32)" className="w-full bg-[var(--color-surface-2)] border border-[var(--color-border)] text-white text-sm rounded-xl px-4 py-3 focus:outline-none focus:border-[var(--color-primary)] transition-colors" />
           <select value={category} onChange={e => setCategory(e.target.value)} className="w-full bg-[var(--color-surface-2)] border border-[var(--color-border)] text-white text-sm rounded-xl px-4 py-3 focus:outline-none focus:border-[var(--color-primary)] transition-colors">
             {cats.map(c => <option key={c}>{c}</option>)}
           </select>
