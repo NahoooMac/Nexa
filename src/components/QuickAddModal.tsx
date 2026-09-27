@@ -57,7 +57,20 @@ export default function QuickAddModal({ isOpen, onClose }: QuickAddModalProps) {
           } catch { /* calendar errors are non-fatal */ }
         }
       } else if (activeForm === 'transaction') {
-        await dbHelpers.addTransaction({ title, amount: parseFloat(amount), type, category: 'General' });
+        let finalAmount = 0;
+        try {
+          const sanitized = amount.replace(/[^-()\d/*+.]/g, '');
+          // eslint-disable-next-line no-new-func
+          finalAmount = new Function(`return ${sanitized || '0'}`)();
+        } catch {
+          finalAmount = parseFloat(amount);
+        }
+        if (isNaN(finalAmount) || finalAmount <= 0) {
+          alert('Please enter a valid amount');
+          setIsLoading(false);
+          return;
+        }
+        await dbHelpers.addTransaction({ title, amount: finalAmount, type, category: 'General' });
       } else if (activeForm === 'goal') {
         await dbHelpers.addGoal({ title, milestones: 5, color: 'bg-indigo-500' });
       }
@@ -152,7 +165,7 @@ export default function QuickAddModal({ isOpen, onClose }: QuickAddModalProps) {
               {/* TRANSACTION fields */}
               {activeForm === 'transaction' && (
                 <>
-                  <Input label="Amount" type="number" step="0.01" min="0.01" placeholder="0.00" value={amount} onChange={(e) => setAmount(e.target.value)} required />
+                  <Input label="Amount" type="text" placeholder="0.00 (e.g. 21+32)" value={amount} onChange={(e) => setAmount(e.target.value)} required />
                   <div className="flex gap-2">
                     <button type="button" onClick={() => setType('expense')}
                       className={`flex-1 py-2.5 rounded-xl text-sm font-semibold transition-all ${type === 'expense' ? 'bg-rose-500/20 text-rose-400 border border-rose-500/30' : 'bg-[var(--color-surface)] text-[var(--color-text-muted)] border border-[var(--color-border)]'}`}>
