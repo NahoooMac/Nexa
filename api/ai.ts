@@ -1,5 +1,3 @@
-import type { IncomingMessage, ServerResponse } from 'node:http';
-
 type Model = 'gpt-5.4-mini' | 'gpt-5.4-nano';
 
 const MODELS: Record<'deep' | 'quick', Model> = {
@@ -7,13 +5,13 @@ const MODELS: Record<'deep' | 'quick', Model> = {
   quick: 'gpt-5.4-nano',
 };
 
-function send(res: ServerResponse, status: number, body: unknown) {
+function send(res: any, status: number, body: unknown) {
   res.statusCode = status;
   res.setHeader('Content-Type', 'application/json');
   res.end(JSON.stringify(body));
 }
 
-async function readBody(req: IncomingMessage): Promise<any> {
+async function readBody(req: any): Promise<any> {
   const chunks: Buffer[] = [];
   for await (const chunk of req) chunks.push(Buffer.from(chunk));
   const raw = Buffer.concat(chunks).toString('utf8');
@@ -80,7 +78,7 @@ async function callOpenAI(model: Model, prompt: string) {
   return result.output_text || result.output?.flatMap((item: any) => item.content || []).map((c: any) => c.text || '').join('') || '';
 }
 
-export default async function handler(req: IncomingMessage, res: ServerResponse) {
+export default async function handler(req: any, res: any) {
   if (req.method !== 'POST') return send(res, 405, { error: 'Method not allowed' });
 
   try {
