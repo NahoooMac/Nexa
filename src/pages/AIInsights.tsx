@@ -1,16 +1,13 @@
 import { useState, useEffect } from 'react';
 import { Card } from '../components/ui/Card';
-import { CheckSquare, Dumbbell, Wallet, BookOpen, Target, ChevronRight } from 'lucide-react';
-import { generateSuggestions, computeProductivityScore, type Suggestion } from '../lib/aiEngine';
+import { CheckSquare, Dumbbell, Wallet, BookOpen, Target, ChevronRight, Sparkles, Send, TrendingUp } from 'lucide-react';
+import { analyzeFinances, generateSuggestions, computeProductivityScore, type Suggestion } from '../lib/aiEngine';
+import { askNexaAI } from '../lib/aiClient';
 import { dbHelpers } from '../lib/db';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../store/authStore';
 
-const SCORE_LABEL = (s: number) =>
-  s >= 80 ? 'Excellent 🚀' : s >= 60 ? 'Good 👍' : s >= 40 ? 'Fair ✊' : 'Needs Work 💡';
-
-const SCORE_COLOR = (s: number) =>
-  s >= 80 ? 'from-emerald-500 to-teal-500' : s >= 60 ? 'from-indigo-500 to-purple-500' : s >= 40 ? 'from-amber-500 to-orange-500' : 'from-rose-500 to-pink-500';
+const SCORE_LABEL = (s: number) => s >= 80 ? 'Excellent 🚀' : s >= 60 ? 'Good 👍' : s >= 40 ? 'Fair ✊' : 'Needs Work 💡';
 
 export default function AIInsights() {
   const navigate = useNavigate();
@@ -24,6 +21,11 @@ export default function AIInsights() {
   const [streak, setStreak] = useState(0);
   const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
   const [score, setScore] = useState(0);
+  const [question, setQuestion] = useState('');
+  const [aiText, setAiText] = useState('');
+  const [aiModel, setAiModel] = useState('');
+  const [aiLoading, setAiLoading] = useState(false);
+  const [aiError, setAiError] = useState('');
 
   useEffect(() => {
     const unsubs = [
@@ -37,191 +39,114 @@ export default function AIInsights() {
     return () => unsubs.forEach(u => u());
   }, []);
 
-  useEffect(() => {
-    dbHelpers.calculateStreak().then(setStreak).catch(() => {});
-  }, [tasks]);
+  useEffect(() => { dbHelpers.calculateStreak().then(setStreak).catch(() => {}); }, [tasks]);
+
+  const input = { tasks, goals, transactions, workouts, courses, reminders, streak };
+  const finance = analyzeFinances(transactions);
+  const completedTasks = tasks.filter(t => t.completed).length;
+  const activeCourses = courses.filter(c => !c.completed && c.progress < 100).length;
 
   useEffect(() => {
-    const input = { tasks, goals, transactions, workouts, courses, reminders, streak };
     setSuggestions(generateSuggestions(input));
     setScore(computeProductivityScore(input));
   }, [tasks, goals, transactions, workouts, courses, reminders, streak]);
 
-  const completedTasks = tasks.filter(t => t.completed).length;
-  const totalIncome = transactions.filter(t => t.type === 'income').reduce((a, c) => a + c.amount, 0);
-  const totalExpense = transactions.filter(t => t.type === 'expense').reduce((a, c) => a + c.amount, 0);
-  const savingsRate = totalIncome > 0 ? Math.round(((totalIncome - totalExpense) / totalIncome) * 100) : 0;
-  const activeCourses = courses.filter(c => !c.completed && c.progress < 100).length;
+  const askAI = async (prompt = question) => {
+    setAiLoading(true);
+    setAiError('');
+    try {
+      const result = await askNexaAI(prompt, { finance, tasks, goals, workouts, courses, reminders, streak }, 'deep');
+      setAiText(result.text);
+      setAiModel(result.model);
+    } catch (error: any) {
+      setAiError(error?.message || 'Nexa AI is unavailable right now.');
+    } finally {
+      setAiLoading(false);
+    }
+  };
 
-  const priorityMap: Record<string, string> = { high: 'text-rose-400 bg-rose-500/10', medium: 'text-amber-400 bg-amber-500/10', low: 'text-emerald-400 bg-emerald-500/10' };
+  const topCategory = finance.expenseByCategory[0];
+  const biggestChange = finance.categoryChanges[0];
 
   return (
     <div className="flex flex-col gap-5 animate-fade-in">
       <div>
-        <h1 className="text-2xl font-black flex items-center gap-2">
-          <img src="/favicon.png" className="w-5 h-5 object-contain" alt="sparkle" /> AI Insights
-        </h1>
-        <p className="text-[var(--color-text-muted)] text-sm mt-0.5">
-          Personalized analysis for {user?.name?.split(' ')[0] ?? 'you'}
-        </p>
+        <h1 className="text-2xl font-black flex items-center gap-2"><Sparkles size={20} /> AI Insights</h1>
+        <p className="text-[var(--color-text-muted)] text-sm mt-0.5">Personalized analysis for {user?.name?.split(' ')[0] ?? 'you'}</p>
       </div>
 
-      {/* Productivity Score */}
-      <div className={`rounded-3xl p-6 bg-gradient-to-br ${SCORE_COLOR(score).replace('from-', 'from-').replace('to-', 'to-')}`} style={{ background: `linear-gradient(135deg, rgba(99,102,241,0.2), rgba(139,92,246,0.2))`, border: '1px solid rgba(99,102,241,0.2)' }}>
-        <div className="flex items-center justify-between">
-          <div>
-            <p className="text-[10px] font-bold text-[var(--color-text-muted)] uppercase tracking-widest mb-1">Productivity Score</p>
-            <p className="text-5xl font-black">{score}</p>
-            <p className="text-sm font-semibold text-[var(--color-text-muted)] mt-1">{SCORE_LABEL(score)}</p>
-          </div>
-          <div className="relative w-24 h-24">
-            <svg viewBox="0 0 100 100" className="w-full h-full -rotate-90">
-              <circle cx="50" cy="50" r="40" fill="none" stroke="rgba(255,255,255,0.1)" strokeWidth="8" />
-              <circle cx="50" cy="50" r="40" fill="none"
-                stroke="url(#scoreGrad2)" strokeWidth="8"
-                strokeLinecap="round"
-                strokeDasharray={`${2 * Math.PI * 40}`}
-                strokeDashoffset={`${2 * Math.PI * 40 * (1 - score / 100)}`}
-                className="transition-all duration-1000 ease-out"
-              />
-              <defs>
-                <linearGradient id="scoreGrad2" x1="0%" y1="0%" x2="100%" y2="100%">
-                  <stop offset="0%" stopColor="#6366f1" />
-                  <stop offset="100%" stopColor="#a78bfa" />
-                </linearGradient>
-              </defs>
-            </svg>
-          </div>
+      <Card className="bg-gradient-to-br from-violet-500/10 to-indigo-500/10 border-violet-500/20">
+        <div className="flex items-center gap-2 mb-3"><Sparkles size={16} className="text-violet-400" /><h2 className="font-bold">Ask Nexa</h2></div>
+        <p className="text-xs text-[var(--color-text-muted)] mb-3">Nexa uses your summarized data to explain your spending, savings, goals, and productivity.</p>
+        <div className="flex gap-2">
+          <input value={question} onChange={e => setQuestion(e.target.value)}
+            onKeyDown={e => { if (e.key === 'Enter' && !aiLoading) askAI(); }}
+            placeholder="Where am I spending too much?"
+            className="flex-1 min-w-0 bg-[var(--color-surface-2)] border border-[var(--color-border)] text-white text-sm rounded-xl px-3 py-2.5 focus:outline-none focus:border-[var(--color-primary)]" />
+          <button onClick={() => askAI()} disabled={aiLoading}
+            className="w-11 rounded-xl bg-gradient-to-r from-indigo-500 to-purple-600 flex items-center justify-center disabled:opacity-50">
+            {aiLoading ? <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" /> : <Send size={15} />}
+          </button>
         </div>
-      </div>
-
-      {/* Weekly Summary */}
-      <div>
-        <h2 className="text-[10px] font-bold text-[var(--color-text-muted)] uppercase tracking-widest mb-3 px-1">Weekly Summary</h2>
-        <div className="grid grid-cols-2 gap-3">
-          <Card className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-indigo-500/10 flex items-center justify-center shrink-0">
-              <CheckSquare size={18} className="text-indigo-400" />
-            </div>
-            <div>
-              <p className="text-xl font-black">{completedTasks}</p>
-              <p className="text-[10px] text-[var(--color-text-muted)]">Tasks Done</p>
-            </div>
-          </Card>
-          <Card className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-rose-500/10 flex items-center justify-center shrink-0">
-              <Dumbbell size={18} className="text-rose-400" />
-            </div>
-            <div>
-              <p className="text-xl font-black">{workouts.length}</p>
-              <p className="text-[10px] text-[var(--color-text-muted)]">Workouts</p>
-            </div>
-          </Card>
-          <Card className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-emerald-500/10 flex items-center justify-center shrink-0">
-              <Wallet size={18} className="text-emerald-400" />
-            </div>
-            <div>
-              <p className="text-xl font-black">{savingsRate}%</p>
-              <p className="text-[10px] text-[var(--color-text-muted)]">Savings Rate</p>
-            </div>
-          </Card>
-          <Card className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-amber-500/10 flex items-center justify-center shrink-0">
-              <BookOpen size={18} className="text-amber-400" />
-            </div>
-            <div>
-              <p className="text-xl font-black">{activeCourses}</p>
-              <p className="text-[10px] text-[var(--color-text-muted)]">Active Courses</p>
-            </div>
-          </Card>
+        <div className="flex gap-2 mt-3 overflow-x-auto scrollbar-hide">
+          {['Analyze my spending', 'How is my savings?', 'What should I focus on?', 'Find unusual spending'].map(q => (
+            <button key={q} onClick={() => { setQuestion(q); askAI(q); }} disabled={aiLoading}
+              className="px-3 py-1.5 rounded-full bg-[var(--color-surface-2)] text-[10px] font-semibold whitespace-nowrap text-[var(--color-text-muted)] hover:text-white">{q}</button>
+          ))}
         </div>
-      </div>
+        {aiError && <p className="text-xs text-rose-400 mt-3">{aiError}</p>}
+        {aiText && (
+          <div className="mt-4 p-4 rounded-2xl bg-black/10 border border-white/5">
+            <p className="text-sm leading-relaxed whitespace-pre-wrap">{aiText}</p>
+            <p className="text-[9px] text-[var(--color-text-muted)] mt-3">Powered by {aiModel}</p>
+          </div>
+        )}
+      </Card>
 
-      {/* Streak */}
-      <Card className="bg-gradient-to-br from-orange-500/10 to-red-500/10 border-orange-500/20">
+      <Card className="bg-gradient-to-br from-emerald-500/10 to-teal-500/10 border-emerald-500/20">
         <div className="flex items-center justify-between">
-          <div>
-            <p className="text-[10px] text-orange-300 uppercase tracking-widest mb-1">Current Streak</p>
-            <p className="text-3xl font-black">🔥 {streak} {streak === 1 ? 'day' : 'days'}</p>
-            <p className="text-xs text-orange-300/60 mt-1">
-              {streak >= 7 ? 'Outstanding consistency!' : streak >= 3 ? 'Great momentum!' : streak > 0 ? 'Keep it going!' : 'Start your streak today!'}
-            </p>
-          </div>
-          <div className="w-16 h-16 rounded-2xl bg-orange-500/10 flex items-center justify-center">
-            <span className="text-3xl">🔥</span>
-          </div>
+          <div><p className="text-[10px] font-bold text-emerald-300 uppercase tracking-widest">Savings</p><p className="text-3xl font-black text-emerald-400">{finance.netSavings.toFixed(0)}</p><p className="text-xs text-[var(--color-text-muted)]">{finance.savingsRate.toFixed(0)}% savings rate</p></div>
+          <Wallet className="text-emerald-400" />
         </div>
       </Card>
 
-      {/* All Suggestions */}
+      {topCategory && (
+        <Card>
+          <div className="flex items-center gap-2 mb-3"><TrendingUp size={16} className="text-rose-400" /><h2 className="font-bold">Spending Snapshot</h2></div>
+          <p className="text-sm">Your largest tracked category is <strong>{topCategory.category}</strong> at <strong>{topCategory.amount.toFixed(0)}</strong> ({topCategory.percentage.toFixed(0)}% of expenses).</p>
+          {biggestChange && biggestChange.previous > 0 && <p className="text-xs text-[var(--color-text-muted)] mt-2">{biggestChange.category} changed {biggestChange.changePercent > 0 ? 'up' : 'down'} {Math.abs(biggestChange.changePercent).toFixed(0)}% compared with last month.</p>}
+        </Card>
+      )}
+
+      <div className="grid grid-cols-2 gap-3">
+        <Card className="flex items-center gap-3"><CheckSquare size={18} className="text-indigo-400" /><div><p className="text-xl font-black">{completedTasks}</p><p className="text-[10px] text-[var(--color-text-muted)]">Tasks Done</p></div></Card>
+        <Card className="flex items-center gap-3"><Dumbbell size={18} className="text-rose-400" /><div><p className="text-xl font-black">{workouts.length}</p><p className="text-[10px] text-[var(--color-text-muted)]">Workouts</p></div></Card>
+        <Card className="flex items-center gap-3"><Wallet size={18} className="text-emerald-400" /><div><p className="text-xl font-black">{finance.savingsRate.toFixed(0)}%</p><p className="text-[10px] text-[var(--color-text-muted)]">Savings Rate</p></div></Card>
+        <Card className="flex items-center gap-3"><BookOpen size={18} className="text-amber-400" /><div><p className="text-xl font-black">{activeCourses}</p><p className="text-[10px] text-[var(--color-text-muted)]">Active Courses</p></div></Card>
+      </div>
+
+      <Card className="bg-gradient-to-br from-indigo-500/10 to-purple-500/10 border-indigo-500/20">
+        <div className="flex items-center justify-between">
+          <div><p className="text-[10px] font-bold text-[var(--color-text-muted)] uppercase tracking-widest">Productivity Score</p><p className="text-4xl font-black">{score}<span className="text-sm text-[var(--color-text-muted)]">/100</span></p><p className="text-xs text-[var(--color-text-muted)]">{SCORE_LABEL(score)}</p></div>
+          <div className="text-4xl">⚡</div>
+        </div>
+      </Card>
+
       <div>
-        <h2 className="text-[10px] font-bold text-[var(--color-text-muted)] uppercase tracking-widest mb-3 px-1">
-          <img src="/favicon.png" className="w-4 h-4 object-contain inline-block mr-1" alt="sparkle" /> All Suggestions ({suggestions.length})
-        </h2>
+        <h2 className="text-[10px] font-bold text-[var(--color-text-muted)] uppercase tracking-widest mb-3 px-1">Smart Suggestions</h2>
         <div className="flex flex-col gap-2.5">
-          {suggestions.length === 0 ? (
-            <div className="flex flex-col items-center py-12 text-[var(--color-text-muted)]">
-              <img src="/favicon.png" className="w-9 h-9 object-contain mb-3 opacity-30" alt="sparkle" />
-              <p className="font-semibold">You're doing great!</p>
-              <p className="text-xs mt-1 text-[var(--color-text-subtle)]">No action items right now.</p>
-            </div>
-          ) : (
-            suggestions.map(s => (
-              <Card key={s.id} className="flex items-start gap-3 group">
-                <span className="text-2xl mt-0.5 shrink-0">{s.icon}</span>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 mb-0.5">
-                    <p className="font-bold text-sm">{s.title}</p>
-                    <span className={`text-[9px] font-bold uppercase px-1.5 py-0.5 rounded-full ${priorityMap[s.priority]}`}>
-                      {s.priority}
-                    </span>
-                  </div>
-                  <p className="text-xs text-[var(--color-text-muted)] leading-relaxed">{s.body}</p>
-                </div>
-                {s.actionPath && (
-                  <button
-                    onClick={() => navigate(s.actionPath!)}
-                    className="w-8 h-8 rounded-full bg-[var(--color-surface-hover)] flex items-center justify-center text-[var(--color-primary)] hover:bg-[var(--color-primary)] hover:text-white transition-all shrink-0 opacity-0 group-hover:opacity-100"
-                  >
-                    <ChevronRight size={16} />
-                  </button>
-                )}
-              </Card>
-            ))
-          )}
+          {suggestions.map(s => (
+            <Card key={s.id} className="flex items-start gap-3 group">
+              <span className="text-2xl shrink-0">{s.icon}</span>
+              <div className="flex-1 min-w-0"><div className="flex items-center gap-2"><p className="font-bold text-sm">{s.title}</p><span className="text-[9px] uppercase px-1.5 py-0.5 rounded-full bg-white/5">{s.priority}</span></div><p className="text-xs text-[var(--color-text-muted)] leading-relaxed mt-1">{s.body}</p></div>
+              {s.actionPath && <button onClick={() => navigate(s.actionPath!)} className="w-8 h-8 rounded-full bg-[var(--color-surface-hover)] flex items-center justify-center text-[var(--color-primary)] opacity-0 group-hover:opacity-100"><ChevronRight size={16} /></button>}
+            </Card>
+          ))}
         </div>
       </div>
 
-      {/* Goals Progress Summary */}
-      {goals.length > 0 && (
-        <div>
-          <h2 className="text-[10px] font-bold text-[var(--color-text-muted)] uppercase tracking-widest mb-3 px-1">Goals Overview</h2>
-          <div className="flex flex-col gap-2">
-            {goals.slice(0, 3).map(g => (
-              <Card key={g.id} className="flex items-center gap-3">
-                <div className={`w-8 h-8 rounded-lg ${g.color} flex items-center justify-center shrink-0`}>
-                  <Target size={14} className="text-white" />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-semibold truncate">{g.title}</p>
-                  <div className="flex items-center gap-2 mt-1">
-                    <div className="flex-1 bg-[var(--color-surface)] h-1.5 rounded-full overflow-hidden">
-                      <div className="bg-gradient-to-r from-indigo-500 to-purple-500 h-full rounded-full transition-all duration-700" style={{ width: `${g.progress}%` }} />
-                    </div>
-                    <span className="text-[10px] text-[var(--color-primary)] font-bold shrink-0">{g.progress}%</span>
-                  </div>
-                </div>
-              </Card>
-            ))}
-            {goals.length > 3 && (
-              <button onClick={() => navigate('/goals')} className="text-xs text-[var(--color-primary)] font-semibold text-center py-2">
-                View all {goals.length} goals →
-              </button>
-            )}
-          </div>
-        </div>
-      )}
+      {goals.length > 0 && <div><h2 className="text-[10px] font-bold text-[var(--color-text-muted)] uppercase tracking-widest mb-3 px-1">Goals Overview</h2><div className="flex flex-col gap-2">{goals.slice(0,3).map(g => <Card key={g.id} className="flex items-center gap-3"><div className={`w-8 h-8 rounded-lg ${g.color} flex items-center justify-center shrink-0`}><Target size={14} className="text-white" /></div><div className="flex-1"><p className="text-sm font-semibold truncate">{g.title}</p><div className="flex items-center gap-2 mt-1"><div className="flex-1 bg-[var(--color-surface)] h-1.5 rounded-full overflow-hidden"><div className="bg-gradient-to-r from-indigo-500 to-purple-500 h-full rounded-full" style={{width:`${g.progress}%`}} /></div><span className="text-[10px] text-[var(--color-primary)] font-bold">{g.progress}%</span></div></div></Card>)}</div></div>}
+      <div className="text-[9px] text-[var(--color-text-muted)] text-center">Basic calculations stay local. AI is only called when you ask Nexa for deeper analysis.</div>
     </div>
   );
 }
