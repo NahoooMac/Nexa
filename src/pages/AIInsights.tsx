@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, type ReactNode } from 'react';
 import { Card } from '../components/ui/Card';
-import { CheckSquare, Dumbbell, Wallet, BookOpen, Target, ChevronRight, Sparkles, Send, TrendingUp } from 'lucide-react';
+import { CheckSquare, Dumbbell, Wallet, BookOpen, Target, ChevronRight, Sparkles, TrendingUp, FileText, CalendarDays } from 'lucide-react';
 import { analyzeFinances, generateSuggestions, computeProductivityScore, type Suggestion } from '../lib/aiEngine';
 import { askNexaAI } from '../lib/aiClient';
 import { dbHelpers } from '../lib/db';
@@ -8,6 +8,32 @@ import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../store/authStore';
 
 const SCORE_LABEL = (s: number) => s >= 80 ? 'Excellent 🚀' : s >= 60 ? 'Good 👍' : s >= 40 ? 'Fair ✊' : 'Needs Work 💡';
+
+type AIAction = 'spending' | 'savings' | 'productivity' | 'unusual' | 'weekly' | 'monthly';
+
+function getPeriodTransactions(transactions: any[], days: number) {
+  const cutoff = new Date();
+  cutoff.setHours(0, 0, 0, 0);
+  cutoff.setDate(cutoff.getDate() - days + 1);
+  return transactions.filter(t => {
+    const raw = t.date || t.createdAt;
+    if (!raw) return false;
+    const date = new Date(raw);
+    return !Number.isNaN(date.getTime()) && date >= cutoff;
+  });
+}
+
+function buildActionPrompt(action: AIAction, finance: ReturnType<typeof analyzeFinances>) {
+  const prompts: Record<AIAction, string> = {
+    spending: 'Analyze my spending. Tell me the biggest spending areas, important changes, unusual patterns, and 2 practical actions I can take.',
+    savings: 'Review my savings. Explain my current savings rate, net savings, monthly trend, and what I should focus on to improve savings.',
+    productivity: 'Review my productivity using the supplied tasks, goals, workouts, learning, reminders, and streak. Give me the most useful observations and 2 practical actions.',
+    unusual: 'Find unusual or potentially important spending from the supplied financial data. Explain what stands out and what I should check.',
+    weekly: 'Create my weekly Nexa report. Summarize the last 7 days of money and productivity data, highlight important changes, and give me 3 priorities for the next week.',
+    monthly: 'Create my monthly Nexa report. Summarize the supplied month, including income, expenses, savings, categories, changes, unusual spending, productivity, goals, learning, workouts, and streak. End with 3 practical priorities for next month.',
+  };
+  return prompts[action];
+}
 
 export default function AIInsights() {
   const navigate = useNavigate();
@@ -21,9 +47,9 @@ export default function AIInsights() {
   const [streak, setStreak] = useState(0);
   const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
   const [score, setScore] = useState(0);
-  const [question, setQuestion] = useState('');
   const [aiText, setAiText] = useState('');
   const [aiModel, setAiModel] = useState('');
+  const [aiTitle, setAiTitle] = useState('');
   const [aiLoading, setAiLoading] = useState(false);
   const [aiError, setAiError] = useState('');
 
@@ -51,11 +77,32 @@ export default function AIInsights() {
     setScore(computeProductivityScore(input));
   }, [tasks, goals, transactions, workouts, courses, reminders, streak]);
 
-  const askAI = async (prompt = question) => {
+  const runAI = async (action: AIAction) => {
     setAiLoading(true);
     setAiError('');
+    setAiText('');
+    setAiTitle(action === 'weekly' ? 'Weekly Report' : action === 'monthly' ? 'Monthly Report' : 'Nexa Analysis');
+
     try {
-      const result = await askNexaAI(prompt, { finance, tasks, goals, workouts, courses, reminders, streak }, 'deep');
+      const isWeekly = action === 'weekly';
+      const isMonthly = action === 'monthly';
+      const periodTransactions = isWeekly
+        ? getPeriodTransactions(transactions, 7)
+        : isMonthly
+          ? getPeriodTransactions(transactions, 30)
+          : transactions;
+
+      const periodFinance = analyzeFinances(periodTransactions);
+      const result = await askNexaAI(buildActionPrompt(action, periodFinance), {
+        finance: periodFinance,
+        tasks: isWeekly || isMonthly ? tasks : tasks,
+        goals,
+        workouts,
+        courses,
+        reminders,
+        streak,
+      }, action === 'productivity' || isWeekly || isMonthly ? 'deep' : 'quick');
+
       setAiText(result.text);
       setAiModel(result.model);
     } catch (error: any) {
@@ -68,37 +115,65 @@ export default function AIInsights() {
   const topCategory = finance.expenseByCategory[0];
   const biggestChange = finance.categoryChanges[0];
 
+  const actionButton = (action: AIAction, label: string, icon: ReactNode, description: string) => (
+    <button
+      onClick={() => runAI(action)}
+      disabled={aiLoading}
+      className="text-left p-4 rounded-2xl bg-[var(--color-surface-2)] border border-[var(--color-border)] hover:border-[var(--color-primary)] transition-all disabled:opacity-50 disabled:cursor-wait"
+    >
+      <div className="flex items-center gap-3">
+        <span className="w-10 h-10 rounded-xl bg-[var(--color-surface-hover)] flex items-center justify-center text-[var(--color-primary)]">{icon}</span>
+        <div className="flex-1 min-w-0">
+          <p className="font-bold text-sm">{label}</p>
+          <p className="text-[10px] text-[var(--color-text-muted)] mt-0.5">{description}</p>
+        </div>
+        <ChevronRight size={16} className="text-[var(--color-text-muted)]" />
+      </div>
+    </button>
+  );
+
   return (
     <div className="flex flex-col gap-5 animate-fade-in">
       <div>
         <h1 className="text-2xl font-black flex items-center gap-2"><Sparkles size={20} /> AI Insights</h1>
-        <p className="text-[var(--color-text-muted)] text-sm mt-0.5">Personalized analysis for {user?.name?.split(' ')[0] ?? 'you'}</p>
+        <p className="text-[var(--color-text-muted)] text-sm mt-0.5">Personalized intelligence for {user?.name?.split(' ')[0] ?? 'you'}</p>
       </div>
 
       <Card className="bg-gradient-to-br from-violet-500/10 to-indigo-500/10 border-violet-500/20">
-        <div className="flex items-center gap-2 mb-3"><Sparkles size={16} className="text-violet-400" /><h2 className="font-bold">Ask Nexa</h2></div>
-        <p className="text-xs text-[var(--color-text-muted)] mb-3">Nexa uses your summarized data to explain your spending, savings, goals, and productivity.</p>
-        <div className="flex gap-2">
-          <input value={question} onChange={e => setQuestion(e.target.value)}
-            onKeyDown={e => { if (e.key === 'Enter' && !aiLoading) askAI(); }}
-            placeholder="Where am I spending too much?"
-            className="flex-1 min-w-0 bg-[var(--color-surface-2)] border border-[var(--color-border)] text-white text-sm rounded-xl px-3 py-2.5 focus:outline-none focus:border-[var(--color-primary)]" />
-          <button onClick={() => askAI()} disabled={aiLoading}
-            className="w-11 rounded-xl bg-gradient-to-r from-indigo-500 to-purple-600 flex items-center justify-center disabled:opacity-50">
-            {aiLoading ? <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" /> : <Send size={15} />}
-          </button>
+        <div className="flex items-center gap-2 mb-1"><Sparkles size={16} className="text-violet-400" /><h2 className="font-bold">Nexa Intelligence</h2></div>
+        <p className="text-xs text-[var(--color-text-muted)] mb-4">AI only runs when you press a button. Your normal Nexa calculations stay local and cost nothing.</p>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+          {actionButton('spending', 'Analyze Spending', <TrendingUp size={17} />, 'See where your money is going')}
+          {actionButton('savings', 'Review Savings', <Wallet size={17} />, 'Understand savings and trends')}
+          {actionButton('productivity', 'Analyze Productivity', <Sparkles size={17} />, 'Review your progress and focus')}
+          {actionButton('unusual', 'Find Unusual Spending', <FileText size={17} />, 'Spot expenses worth checking')}
         </div>
-        <div className="flex gap-2 mt-3 overflow-x-auto scrollbar-hide">
-          {['Analyze my spending', 'How is my savings?', 'What should I focus on?', 'Find unusual spending'].map(q => (
-            <button key={q} onClick={() => { setQuestion(q); askAI(q); }} disabled={aiLoading}
-              className="px-3 py-1.5 rounded-full bg-[var(--color-surface-2)] text-[10px] font-semibold whitespace-nowrap text-[var(--color-text-muted)] hover:text-white">{q}</button>
-          ))}
+
+        <div className="border-t border-[var(--color-border)] mt-4 pt-4">
+          <p className="text-[10px] font-bold uppercase tracking-widest text-[var(--color-text-muted)] mb-2">Reports</p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+            {actionButton('weekly', 'Generate Weekly Report', <CalendarDays size={17} />, 'Last 7 days + next-week priorities')}
+            {actionButton('monthly', 'Generate Monthly Report', <FileText size={17} />, 'Last 30 days + next-month priorities')}
+          </div>
         </div>
+
+        {aiLoading && (
+          <div className="mt-4 p-4 rounded-2xl bg-black/10 border border-white/5 flex items-center gap-3">
+            <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+            <p className="text-xs text-[var(--color-text-muted)]">Nexa is analyzing your data...</p>
+          </div>
+        )}
+
         {aiError && <p className="text-xs text-rose-400 mt-3">{aiError}</p>}
-        {aiText && (
+
+        {aiText && !aiLoading && (
           <div className="mt-4 p-4 rounded-2xl bg-black/10 border border-white/5">
+            <div className="flex items-center justify-between gap-3 mb-3">
+              <h3 className="font-bold text-sm">{aiTitle}</h3>
+              <span className="text-[9px] text-[var(--color-text-muted)]">{aiModel}</span>
+            </div>
             <p className="text-sm leading-relaxed whitespace-pre-wrap">{aiText}</p>
-            <p className="text-[9px] text-[var(--color-text-muted)] mt-3">Powered by {aiModel}</p>
           </div>
         )}
       </Card>
@@ -146,7 +221,8 @@ export default function AIInsights() {
       </div>
 
       {goals.length > 0 && <div><h2 className="text-[10px] font-bold text-[var(--color-text-muted)] uppercase tracking-widest mb-3 px-1">Goals Overview</h2><div className="flex flex-col gap-2">{goals.slice(0,3).map(g => <Card key={g.id} className="flex items-center gap-3"><div className={`w-8 h-8 rounded-lg ${g.color} flex items-center justify-center shrink-0`}><Target size={14} className="text-white" /></div><div className="flex-1"><p className="text-sm font-semibold truncate">{g.title}</p><div className="flex items-center gap-2 mt-1"><div className="flex-1 bg-[var(--color-surface)] h-1.5 rounded-full overflow-hidden"><div className="bg-gradient-to-r from-indigo-500 to-purple-500 h-full rounded-full" style={{width:`${g.progress}%`}} /></div><span className="text-[10px] text-[var(--color-primary)] font-bold">{g.progress}%</span></div></div></Card>)}</div></div>}
-      <div className="text-[9px] text-[var(--color-text-muted)] text-center">Basic calculations stay local. AI is only called when you ask Nexa for deeper analysis.</div>
+
+      <div className="text-[9px] text-[var(--color-text-muted)] text-center">AI is never called automatically. Reports and analyses are generated only when you press a button.</div>
     </div>
   );
 }
