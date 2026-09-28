@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { Card } from '../components/ui/Card';
 import { PlayCircle, BookOpen, CheckCircle, Code, Video, FileText, Plus, Trash2 } from 'lucide-react';
 import { dbHelpers } from '../lib/db';
@@ -31,6 +31,132 @@ const getYouTubeVideoId = (url?: string) => {
   return (match && match[2].length === 11) ? match[2] : null;
 };
 
+// ─── YouTube Player with real-time progress tracking ──────────────────────────
+declare global {
+  interface Window {
+    YT: any;
+    onYouTubeIframeAPIReady: () => void;
+    _ytAPILoading?: boolean;
+  }
+}
+
+function loadYTApi(): Promise<void> {
+  return new Promise((resolve) => {
+    if (window.YT && window.YT.Player) { resolve(); return; }
+    if (window._ytAPILoading) {
+      const original = window.onYouTubeIframeAPIReady;
+      window.onYouTubeIframeAPIReady = () => { original?.(); resolve(); };
+      return;
+    }
+    window._ytAPILoading = true;
+    window.onYouTubeIframeAPIReady = () => resolve();
+    const tag = document.createElement('script');
+    tag.src = 'https://www.youtube.com/iframe_api';
+    document.head.appendChild(tag);
+  });
+}
+
+interface YouTubePlayerProps {
+  videoId: string;
+  courseId: string;
+  currentProgress: number;
+  onProgressChange: (courseId: string, progress: number) => void;
+}
+
+function YouTubePlayer({ videoId, courseId, currentProgress, onProgressChange }: YouTubePlayerProps) {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const playerRef = useRef<any>(null);
+  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const lastSavedProgress = useRef(currentProgress);
+
+  const stopTracking = useCallback(() => {
+    if (intervalRef.current) { clearInterval(intervalRef.current); intervalRef.current = null; }
+  }, []);
+
+  const startTracking = useCallback(() => {
+    stopTracking();
+    intervalRef.current = setInterval(() => {
+      const player = playerRef.current;
+      if (!player || typeof player.getDuration !== 'function') return;
+      const duration = player.getDuration();
+      const current = player.getCurrentTime();
+      if (!duration || duration === 0) return;
+      const pct = Math.round((current / duration) * 100);
+      // Only save if progress moved by at least 2% and is more than saved
+      if (pct > lastSavedProgress.current + 1) {
+        lastSavedProgress.current = pct;
+        onProgressChange(courseId, Math.min(pct, 100));
+      }
+    }, 5000); // check every 5 seconds
+  }, [courseId, onProgressChange, stopTracking]);
+
+  useEffect(() => {
+    let destroyed = false;
+
+    const init = async () => {
+      await loadYTApi();
+      if (destroyed || !containerRef.current) return;
+
+      // Create a div inside the container for the player
+      const playerDiv = document.createElement('div');
+      containerRef.current.appendChild(playerDiv);
+
+      playerRef.current = new window.YT.Player(playerDiv, {
+        width: '100%',
+        height: '100%',
+        videoId,
+        playerVars: {
+          autoplay: 0,
+          rel: 0,
+          modestbranding: 1,
+          origin: window.location.origin,
+        },
+        events: {
+          onStateChange: (event: any) => {
+            const YT = window.YT;
+            if (event.data === YT.PlayerState.PLAYING) {
+              startTracking();
+            } else {
+              stopTracking();
+              // Save progress when paused/ended
+              const player = playerRef.current;
+              if (player && typeof player.getDuration === 'function') {
+                const duration = player.getDuration();
+                const current = player.getCurrentTime();
+                if (duration > 0) {
+                  const pct = Math.round((current / duration) * 100);
+                  if (pct > lastSavedProgress.current) {
+                    lastSavedProgress.current = pct;
+                    onProgressChange(courseId, Math.min(pct, 100));
+                  }
+                }
+              }
+            }
+          },
+        },
+      });
+    };
+
+    init();
+
+    return () => {
+      destroyed = true;
+      stopTracking();
+      try { playerRef.current?.destroy(); } catch { /* ignore */ }
+    };
+  }, [videoId, courseId, startTracking, stopTracking, onProgressChange]);
+
+  return (
+    <div
+      ref={containerRef}
+      className="w-full aspect-video rounded-xl overflow-hidden bg-black/20 shadow-inner"
+      style={{ minHeight: '200px' }}
+    />
+  );
+}
+
+// ─── Modals ───────────────────────────────────────────────────────────────────
+
 function AddCourseModal({ onClose, onAdd }: { onClose: () => void; onAdd: (d: any) => Promise<void> }) {
   const [title, setTitle] = useState('');
   const [platform, setPlatform] = useState('YouTube');
@@ -51,7 +177,7 @@ function AddCourseModal({ onClose, onAdd }: { onClose: () => void; onAdd: (d: an
           <input value={title} onChange={e => setTitle(e.target.value)} required placeholder="Course title" className="w-full bg-[var(--color-surface-2)] border border-[var(--color-border)] text-white text-sm rounded-xl px-4 py-3 focus:outline-none focus:border-[var(--color-primary)] transition-colors" />
           <input value={platform} onChange={e => setPlatform(e.target.value)} required placeholder="Platform (e.g. Udemy, YouTube)" className="w-full bg-[var(--color-surface-2)] border border-[var(--color-border)] text-white text-sm rounded-xl px-4 py-3 focus:outline-none focus:border-[var(--color-primary)] transition-colors" />
           <input value={duration} onChange={e => setDuration(e.target.value)} placeholder="Duration (e.g. 12 hours)" className="w-full bg-[var(--color-surface-2)] border border-[var(--color-border)] text-white text-sm rounded-xl px-4 py-3 focus:outline-none focus:border-[var(--color-primary)] transition-colors" />
-          <input value={url} onChange={e => setUrl(e.target.value)} placeholder="URL (optional)" type="url" className="w-full bg-[var(--color-surface-2)] border border-[var(--color-border)] text-white text-sm rounded-xl px-4 py-3 focus:outline-none focus:border-[var(--color-primary)] transition-colors" />
+          <input value={url} onChange={e => setUrl(e.target.value)} placeholder="YouTube URL (optional)" type="url" className="w-full bg-[var(--color-surface-2)] border border-[var(--color-border)] text-white text-sm rounded-xl px-4 py-3 focus:outline-none focus:border-[var(--color-primary)] transition-colors" />
           <div>
             <label className="block text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wider mb-1.5">Type</label>
             <div className="flex gap-2">
@@ -103,6 +229,8 @@ function AddNoteModal({ courses, onClose, onAdd }: { courses: Course[]; onClose:
   );
 }
 
+// ─── Main Page ────────────────────────────────────────────────────────────────
+
 export default function Learning() {
   const [courses, setCourses] = useState<Course[]>([]);
   const [notes, setNotes] = useState<Note[]>([]);
@@ -124,6 +252,12 @@ export default function Learning() {
     try { await dbHelpers.updateCourseProgress(course.id, newProgress); }
     finally { setUpdatingId(null); }
   };
+
+  // Called by YouTubePlayer when watch progress changes
+  const handleYTProgress = useCallback(async (courseId: string, progress: number) => {
+    try { await dbHelpers.updateCourseProgress(courseId, progress); }
+    catch { /* silent */ }
+  }, []);
 
   const inProgress = courses.filter(c => !c.completed && c.progress < 100);
   const completed  = courses.filter(c => c.completed || c.progress >= 100);
@@ -183,18 +317,15 @@ export default function Learning() {
                 </button>
               </div>
 
+              {/* YouTube Player with real-time progress tracking */}
               {videoId && (
-                <div className="w-full aspect-video rounded-xl overflow-hidden bg-black/20 shadow-inner">
-                  <iframe
-                    width="100%"
-                    height="100%"
-                    src={`https://www.youtube.com/embed/${videoId}`}
-                    title={course.title}
-                    frameBorder="0"
-                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                    allowFullScreen
-                  ></iframe>
-                </div>
+                <YouTubePlayer
+                  key={videoId}
+                  videoId={videoId}
+                  courseId={course.id}
+                  currentProgress={course.progress}
+                  onProgressChange={handleYTProgress}
+                />
               )}
 
               <div>
@@ -217,7 +348,7 @@ export default function Learning() {
                 )}
               </div>
             </Card>
-          )})}
+          )})};
           <button onClick={() => setShowAddCourse(true)} className="flex items-center justify-center gap-2 p-4 rounded-2xl border-2 border-dashed border-[var(--color-border)] text-[var(--color-text-muted)] hover:border-amber-500 hover:text-amber-400 transition-all press-effect">
             <Plus size={18} /><span className="font-semibold text-sm">Add a course</span>
           </button>
@@ -254,7 +385,7 @@ export default function Learning() {
                     <p className="font-bold text-sm truncate">{course.title}</p>
                     <div className="flex items-center gap-2 mt-1">
                       <div className="flex-1 bg-[var(--color-surface)] h-1.5 rounded-full overflow-hidden">
-                        <div className="bg-red-500 h-full rounded-full" style={{ width: `${course.progress}%` }} />
+                        <div className="bg-red-500 h-full rounded-full transition-all duration-500" style={{ width: `${course.progress}%` }} />
                       </div>
                       <span className="text-[10px] text-red-400 font-semibold">{course.progress}%</span>
                     </div>

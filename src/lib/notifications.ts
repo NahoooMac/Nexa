@@ -17,7 +17,7 @@ export function hasNotificationPermission(): boolean {
 export function sendBrowserNotification(
   title: string,
   body: string,
-  icon = '/vite.svg',
+  icon = '/favicon.png',
   vibrate = true
 ) {
   if (!hasNotificationPermission()) return;
@@ -52,21 +52,47 @@ export function scheduleNotification(
 }
 
 /**
+ * A module-level map to track active reminder timeouts so we can
+ * clear them before re-scheduling. This prevents duplicate notifications
+ * when Firestore triggers multiple snapshot updates.
+ */
+const activeReminderTimeouts = new Map<string, ReturnType<typeof setTimeout>>();
+
+/**
  * Schedule notifications for an array of reminders.
+ * Clears any previously scheduled notifications before re-scheduling
+ * to prevent duplicates from Firestore real-time listener firing multiple times.
  * Returns a map of reminderId → timeoutId for cleanup.
  */
 export function scheduleReminders(
   reminders: Array<{ id: string; title: string; description?: string; dueDate: string; dueTime?: string }>
 ): Map<string, ReturnType<typeof setTimeout>> {
-  const map = new Map<string, ReturnType<typeof setTimeout>>();
+  // 1. Clear ALL previously tracked timeouts
+  for (const [, timeoutId] of activeReminderTimeouts) {
+    clearTimeout(timeoutId);
+  }
+  activeReminderTimeouts.clear();
 
+  // 2. Schedule fresh timeouts
   for (const r of reminders) {
     const dateStr = r.dueTime ? `${r.dueDate}T${r.dueTime}:00` : `${r.dueDate}T09:00:00`;
     const id = scheduleNotification(r.title, r.description ?? 'Nexa reminder', dateStr);
-    if (id !== null) map.set(r.id, id);
+    if (id !== null) {
+      activeReminderTimeouts.set(r.id, id);
+    }
   }
 
-  return map;
+  return new Map(activeReminderTimeouts);
+}
+
+/**
+ * Cancel all currently scheduled reminder notifications.
+ */
+export function clearAllScheduledReminders(): void {
+  for (const [, timeoutId] of activeReminderTimeouts) {
+    clearTimeout(timeoutId);
+  }
+  activeReminderTimeouts.clear();
 }
 
 /**
