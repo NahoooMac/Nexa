@@ -39,7 +39,7 @@ Never invent numbers. Use only the supplied data.
 Do not shame the user about spending. Do not make investment, lending, tax, or other regulated financial recommendations.
 Use the user's currency from the data.
 Separate observed facts from suggestions.
-Keep the response concise and actionable.
+Keep the response concise and actionable. This is not a chat assistant. Write a self-contained insight or report that can be displayed in Nexa after a button click. For weekly or monthly reports, use clear sections and end with practical priorities.
 
 User question:
 ${question || 'Analyze my current situation and tell me the most useful things I should know.'}
@@ -84,7 +84,7 @@ export default async function handler(req: any, res: any) {
   try {
     const body = await readBody(req);
     const mode = body.mode === 'quick' ? 'quick' : 'deep';
-    const question = typeof body.question === 'string' ? body.question.slice(0, 1000) : '';
+    const question = typeof body.question === 'string' ? body.question.slice(0, 1000) : 'Generate the requested Nexa analysis.';
     const data = compact(body.data || {});
 
     if (!data || typeof data !== 'object') return send(res, 400, { error: 'AI data is required' });
