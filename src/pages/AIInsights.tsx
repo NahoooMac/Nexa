@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, type ReactNode } from 'react';
 import { Card } from '../components/ui/Card';
 import { CheckSquare, Dumbbell, Wallet, BookOpen, Target, ChevronRight, Sparkles, TrendingUp, FileText, CalendarDays } from 'lucide-react';
 import { analyzeFinances, generateSuggestions, computeProductivityScore, type Suggestion } from '../lib/aiEngine';
@@ -115,7 +115,7 @@ export default function AIInsights() {
   const topCategory = finance.expenseByCategory[0];
   const biggestChange = finance.categoryChanges[0];
 
-  const actionButton = (action: AIAction, label: string, icon: React.ReactNode, description: string) => (
+  const actionButton = (action: AIAction, label: string, icon: ReactNode, description: string) => (
     <button
       onClick={() => runAI(action)}
       disabled={aiLoading}
