@@ -48,6 +48,11 @@
   ::-webkit-scrollbar { width: 4px; height: 4px; }
   ::-webkit-scrollbar-track { background: transparent; }
   ::-webkit-scrollbar-thumb { background: var(--color-surface-hover); border-radius: 99px; }
+
+  ::placeholder {
+    color: #64748b !important;
+    opacity: 1 !important;
+  }
 }
 
 /* ============================================================

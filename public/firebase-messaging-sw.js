@@ -1,53 +1,77 @@
-// Firebase Messaging Service Worker — ESM version
-// Uses the modular SDK so it does NOT request /__/firebase/init.json
-// This file must be served from the root (public/firebase-messaging-sw.js)
+// Firebase Messaging Service Worker for Nexa
+// Uses the ESM/CDN Firebase SDK — NO bundler, must use importScripts or ESM CDN.
+// This file is served from the root (public/firebase-messaging-sw.js)
 
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/11.0.0/firebase-app.js';
 import { getMessaging, onBackgroundMessage } from 'https://www.gstatic.com/firebasejs/11.0.0/firebase-messaging-sw.js';
 
-// NOTE: These values are intentionally hardcoded in the service worker
-// because it runs outside the Vite/module bundler environment.
-// Firebase client-side API keys are safe to expose publicly.
+// These values are intentionally inlined. Firebase client-side API keys are
+// safe to expose publicly (they only identify the project, not grant server access).
 const firebaseConfig = {
-  apiKey: self.__FIREBASE_API_KEY__ || '',
-  authDomain: self.__FIREBASE_AUTH_DOMAIN__ || '',
-  projectId: self.__FIREBASE_PROJECT_ID__ || '',
-  storageBucket: self.__FIREBASE_STORAGE_BUCKET__ || '',
-  messagingSenderId: self.__FIREBASE_MESSAGING_SENDER_ID__ || '',
-  appId: self.__FIREBASE_APP_ID__ || '',
+  apiKey: "AIzaSyBgkLFXc2oWppSauu-4nAYsyZHhxZctiGk",
+  authDomain: "shebacine.firebaseapp.com",
+  projectId: "shebacine",
+  storageBucket: "shebacine.firebasestorage.app",
+  messagingSenderId: "255641134678",
+  appId: "1:255641134678:web:836ea32220e0f678537df7",
 };
 
 const app = initializeApp(firebaseConfig);
 const messaging = getMessaging(app);
 
-// Handle background messages (app tab is in background or closed)
+// ── Handle background push messages (tab in background / closed) ──────────────
 onBackgroundMessage(messaging, (payload) => {
-  const title = payload.notification?.title || 'Nexa Reminder';
-  const body = payload.notification?.body || 'You have a new notification';
+  const title = payload.notification?.title ?? 'Nexa Reminder';
+  const body  = payload.notification?.body  ?? 'You have a new notification';
+  const tag   = payload.data?.tag ?? 'nexa-notification';
+  const url   = payload.data?.url ?? '/reminders';
 
   self.registration.showNotification(title, {
     body,
-    icon: '/favicon.svg',
-    badge: '/favicon.svg',
-    tag: payload.data?.tag || 'nexa-notification',
+    icon: '/favicon.png',
+    badge: '/favicon.png',
+    tag,
+    data: { url },
     requireInteraction: false,
     silent: false,
   });
 });
 
-// On notification click — focus the app window
+// ── Handle notification click — deep-link into the app ────────────────────────
 self.addEventListener('notificationclick', (event) => {
   event.notification.close();
+  const targetUrl = event.notification.data?.url ?? '/reminders';
+
   event.waitUntil(
-    clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientList) => {
+    self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientList) => {
+      // Focus an existing tab if one is open
       for (const client of clientList) {
-        if (client.url && 'focus' in client) {
+        if ('focus' in client) {
+          client.navigate(targetUrl);
           return client.focus();
         }
       }
-      if (clients.openWindow) {
-        return clients.openWindow('/reminders');
+      // Otherwise open a new window
+      if (self.clients.openWindow) {
+        return self.clients.openWindow(targetUrl);
       }
     })
   );
+});
+
+// ── Handle scheduled alarm notifications (non-FCM path) ──────────────────────
+// When the main thread cannot reach us (app closed), the service worker can
+// still show locally-triggered notifications via postMessage.
+self.addEventListener('message', (event) => {
+  if (event.data?.type === 'SHOW_NOTIFICATION') {
+    const { title, body, tag, url } = event.data;
+    self.registration.showNotification(title ?? 'Nexa', {
+      body: body ?? '',
+      icon: '/favicon.png',
+      badge: '/favicon.png',
+      tag: tag ?? 'nexa',
+      data: { url: url ?? '/reminders' },
+      requireInteraction: false,
+    });
+  }
 });

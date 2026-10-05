@@ -47,7 +47,15 @@ function AddTransactionModal({ onClose, onAdd }: { onClose: () => void; onAdd: (
         setIsLoading(false);
         return;
       }
-      await onAdd({ title, amount: finalAmount, type, category, date: new Date(date).toISOString() });
+      let finalDateStr = new Date().toISOString();
+      if (date) {
+        try {
+          finalDateStr = new Date(date).toISOString();
+        } catch {
+          // ignore invalid date strings and default to today
+        }
+      }
+      await onAdd({ title, amount: finalAmount, type, category, date: finalDateStr });
       onClose();
     } catch { alert('Failed to add transaction'); }
     finally { setIsLoading(false); }

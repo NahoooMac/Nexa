@@ -79,231 +79,232 @@ export default function Dashboard() {
 
   const visibleSuggestions = suggestions.filter(s => !dismissedSuggestions.has(s.id)).slice(0, 5);
 
+  // Compute Momentum
+  const momentumScore = Math.min(100, Math.round(
+    (taskProgress * 0.7) + (streak * 3) + (productivityScore * 0.1)
+  ));
+
+  // Determine top 3 priority actions for today
+  // 1. Any task marked as priority
+  // 2. Any task due today
+  // 3. Fallback to any incomplete task
+  const priorityActions = tasks
+    .filter(t => !t.completed)
+    .sort((a, b) => {
+      if (a.priority && !b.priority) return -1;
+      if (!a.priority && b.priority) return 1;
+      if (a.dueDate === new Date().toISOString().split('T')[0]) return -1;
+      return 0;
+    })
+    .slice(0, 3);
+
+  // Today's Spending
+  const todaysExpense = transactions
+    .filter(t => t.type === 'expense' && t.date?.startsWith(new Date().toISOString().split('T')[0]))
+    .reduce((a, c) => a + c.amount, 0);
+
   return (
-    <div className="flex flex-col gap-5 animate-fade-in">
-
-      {/* Quick shortcuts */}
-      <div className="grid grid-cols-4 gap-2.5">
-        {shortcuts.map(({ label, icon: Icon, path, color, iconColor }) => (
-          <Link key={label} to={path} className="flex flex-col items-center gap-2 p-3 rounded-2xl glass-panel hover:bg-white/5 transition-all press-effect group">
-            <div className={`w-10 h-10 rounded-xl bg-gradient-to-br ${color} flex items-center justify-center`}>
-              <Icon size={18} className={iconColor} />
-            </div>
-            <span className="text-[10px] font-semibold text-[var(--color-text-muted)] group-hover:text-white transition-colors">{label}</span>
-          </Link>
-        ))}
+    <div className="flex flex-col gap-5 animate-fade-in pb-8">
+      
+      {/* Header */}
+      <div className="flex flex-col items-center py-4">
+        <h1 className="text-3xl font-black mb-1">Today</h1>
+        <p className="text-sm text-[var(--color-text-muted)] text-center max-w-xs">
+          What should you do today to move your life forward?
+        </p>
       </div>
 
-      {/* AI Suggestions strip */}
-      {visibleSuggestions.length > 0 && (
-        <div>
-          <div className="flex items-center justify-between mb-2.5">
-            <span className="text-[10px] font-bold text-[var(--color-text-muted)] uppercase tracking-widest flex items-center gap-1.5">
-              <img src="/favicon.png" className="w-3 h-3 object-contain" alt="sparkle" /> AI Insights
-            </span>
-            <Link to="/insights" className="text-[10px] text-[var(--color-primary)] font-semibold">View all</Link>
-          </div>
-          <div className="flex gap-2.5 overflow-x-auto pb-1 scrollbar-hide">
-            {visibleSuggestions.map(s => (
-              <div key={s.id} className="shrink-0 w-56 rounded-2xl glass-panel p-3.5 flex flex-col gap-2 border border-white/5">
-                <div className="flex justify-between items-start">
-                  <span className="text-lg">{s.icon}</span>
-                  <button
-                    onClick={() => setDismissedSuggestions(prev => new Set([...prev, s.id]))}
-                    className="text-[var(--color-text-muted)] hover:text-white text-lg leading-none"
-                  >×</button>
-                </div>
-                <div>
-                  <p className="text-xs font-bold leading-tight mb-0.5">{s.title}</p>
-                  <p className="text-[10px] text-[var(--color-text-muted)] leading-relaxed">{s.body}</p>
-                </div>
-                {s.actionPath && (
-                  <button
-                    onClick={() => navigate(s.actionPath!)}
-                    className="text-[10px] font-bold text-[var(--color-primary)] flex items-center gap-1 hover:text-[var(--color-primary-light)] transition-colors"
-                  >
-                    {s.actionLabel} <ChevronRight size={10} />
-                  </button>
-                )}
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* Progress + Stats row */}
-      <div className="flex gap-3">
-        <Card className="flex-1 flex flex-col items-center justify-center py-5">
-          <p className="text-[10px] font-bold text-[var(--color-text-muted)] uppercase tracking-wider mb-3">Today</p>
-          <ProgressRing progress={taskProgress} size={110} strokeWidth={9} sublabel={motivationalLabel} />
-        </Card>
-        <div className="flex-1 flex flex-col gap-3">
-          <Card className="flex-1 flex flex-col justify-center">
-            <span className="text-[10px] text-[var(--color-text-muted)] uppercase tracking-wider">Spent</span>
-            <span className="text-xl font-bold">${totalExpense.toFixed(0)}</span>
-          </Card>
-          <Card className="flex-1 flex flex-col justify-center bg-gradient-to-br from-indigo-500/20 to-purple-500/20 border-indigo-500/30">
-            <span className="text-[10px] text-indigo-300 uppercase tracking-wider flex items-center gap-1"><Flame size={10} /> Streak</span>
-            <span className="text-xl font-bold text-white">🔥 {streak} {streak === 1 ? 'Day' : 'Days'}</span>
-          </Card>
-        </div>
-      </div>
-
-      {/* Productivity Score */}
-      <Card className="bg-gradient-to-br from-violet-500/10 to-indigo-500/10 border-violet-500/20">
-        <div className="flex items-center justify-between">
-          <div>
-            <p className="text-[10px] font-bold text-violet-300 uppercase tracking-widest mb-1">Productivity Score</p>
-            <p className="text-2xl font-black">{productivityScore}<span className="text-sm text-[var(--color-text-muted)] font-normal">/100</span></p>
-          </div>
-          <div className="relative w-16 h-16">
-            <svg viewBox="0 0 64 64" className="w-full h-full -rotate-90">
-              <circle cx="32" cy="32" r="26" fill="none" stroke="var(--color-surface-2)" strokeWidth="6" />
-              <circle cx="32" cy="32" r="26" fill="none" stroke="url(#scoreGrad)" strokeWidth="6"
-                strokeLinecap="round"
-                strokeDasharray={`${2 * Math.PI * 26}`}
-                strokeDashoffset={`${2 * Math.PI * 26 * (1 - productivityScore / 100)}`}
-                className="transition-all duration-1000 ease-out"
-              />
-              <defs>
-                <linearGradient id="scoreGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-                  <stop offset="0%" stopColor="#8b5cf6" />
-                  <stop offset="100%" stopColor="#6366f1" />
-                </linearGradient>
-              </defs>
-            </svg>
-          </div>
-        </div>
-      </Card>
-
-      {/* Financial Chart */}
-      <Card className="p-0 overflow-hidden">
-        <div className="p-5 pb-2">
-          <div className="flex justify-between items-start">
-            <div>
-              <CardTitle>Cash Flow</CardTitle>
-              <div className="text-xs text-[var(--color-text-muted)] mt-0.5">Last 7 days</div>
-            </div>
-            <div className="text-right">
-              <div className={`text-2xl font-bold ${balance >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>${balance.toFixed(0)}</div>
-              <div className="text-xs text-[var(--color-text-muted)]">Balance</div>
-            </div>
-          </div>
-        </div>
-        <div className="h-36 w-full">
-          <ResponsiveContainer width="100%" height="100%">
-            <AreaChart data={chartData} margin={{ top: 5, right: 0, left: 0, bottom: 0 }}>
-              <defs>
-                <linearGradient id="colorValue" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="#6366f1" stopOpacity={0.4}/>
-                  <stop offset="95%" stopColor="#6366f1" stopOpacity={0}/>
-                </linearGradient>
-              </defs>
-              <XAxis dataKey="name" tick={{ fontSize: 10, fill: '#64748b' }} axisLine={false} tickLine={false} />
-              <Tooltip contentStyle={{ backgroundColor: '#0f172a', borderColor: '#1e293b', borderRadius: '10px', fontSize: '12px' }} itemStyle={{ color: '#fff' }} />
-              <Area type="monotone" dataKey="value" stroke="#6366f1" strokeWidth={2.5} fillOpacity={1} fill="url(#colorValue)" />
-            </AreaChart>
-          </ResponsiveContainer>
-        </div>
-      </Card>
-
-      {/* Tasks */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Today's Tasks</CardTitle>
-          <Link to="/tasks" className="text-xs text-[var(--color-primary)] flex items-center gap-1 font-medium hover:text-[var(--color-primary-light)] transition-colors">
-            View all <ArrowRight size={12} />
-          </Link>
+      {/* Action Command Center */}
+      <Card className="border-[var(--color-primary)]/40 shadow-[0_0_20px_rgba(99,102,241,0.15)] relative overflow-hidden">
+        <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-indigo-500 via-purple-500 to-rose-500" />
+        <CardHeader className="pb-3 pt-5">
+          <CardTitle className="text-lg flex items-center gap-2">
+            <Target size={18} className="text-indigo-400" /> 
+            Today's Focus
+          </CardTitle>
         </CardHeader>
-        <div className="flex flex-col gap-3">
-          {todayTasks.length === 0 ? (
-            <div className="flex flex-col items-center py-4 text-[var(--color-text-muted)]">
-              <CheckCircle2 size={28} className="mb-2 opacity-30" />
-              <span className="text-sm">All done! Add a new task to keep going.</span>
+        <div className="flex flex-col gap-2">
+          {priorityActions.length === 0 ? (
+            <div className="flex flex-col items-center py-6 text-[var(--color-text-muted)]">
+              <CheckCircle2 size={32} className="mb-2 opacity-30 text-emerald-400" />
+              <span className="text-sm font-medium">You're all caught up today.</span>
+              <span className="text-xs mt-1">Enjoy your time or plan for tomorrow.</span>
             </div>
           ) : (
-            todayTasks.map(task => (
-              <div key={task.id} className="flex items-center gap-3 py-1">
-                <button onClick={() => dbHelpers.toggleTaskStatus(task.id, task.completed)} className="shrink-0">
-                  {task.completed
-                    ? <CheckCircle2 className="text-[var(--color-primary)]" size={20} />
-                    : <Circle className="text-[var(--color-text-muted)] hover:text-white transition-colors" size={20} />
-                  }
-                </button>
-                <span className={`text-sm truncate ${task.completed ? 'text-[var(--color-text-muted)] line-through' : 'text-[var(--color-text-main)]'}`}>
-                  {task.title}
-                </span>
-                {task.priority && <span className="text-[10px] bg-rose-500/15 text-rose-400 px-1.5 py-0.5 rounded-full font-semibold shrink-0">Priority</span>}
-              </div>
-            ))
+            priorityActions.map((task, index) => {
+              // Find the linked goal if referenceId exists
+              const linkedGoal = task.referenceId ? goals.find(g => g.id === task.referenceId) : null;
+              
+              return (
+                <div key={task.id} className="flex items-center gap-3 p-3 rounded-2xl bg-white/5 border border-white/5 hover:bg-white/10 transition-all group">
+                  <span className="text-xs font-bold text-indigo-400/50 w-4 text-center">{index + 1}</span>
+                  <button onClick={() => dbHelpers.toggleTaskStatus(task.id, task.completed)} className="shrink-0 transition-transform active:scale-90">
+                    <Circle className="text-[var(--color-text-muted)] group-hover:text-white transition-colors" size={22} />
+                  </button>
+                  <div className="flex flex-col flex-1 min-w-0">
+                    <span className="text-sm font-semibold truncate text-white">{task.title}</span>
+                    {linkedGoal && (
+                      <span className="text-[10px] text-indigo-300 font-medium flex items-center gap-1 mt-0.5">
+                        <ArrowRight size={10} /> {linkedGoal.title}
+                      </span>
+                    )}
+                  </div>
+                  <button
+                    onClick={() => navigate(`/focus/${task.id}`)}
+                    className="w-8 h-8 rounded-full bg-[var(--color-primary)] flex items-center justify-center text-white shadow-lg shadow-indigo-500/20 hover:scale-110 transition-all"
+                  >
+                    <Flame size={14} fill="currentColor" />
+                  </button>
+                </div>
+              );
+            })
           )}
         </div>
+        
+        {priorityActions.length > 0 && (
+          <div className="mt-4 pt-4 border-t border-white/5 flex items-center justify-between">
+            <span className="text-xs font-medium text-[var(--color-text-muted)]">
+              You're <span className="text-white font-bold">{taskProgress}%</span> on track today
+            </span>
+            <div className="w-32 bg-[var(--color-surface-hover)] h-1.5 rounded-full overflow-hidden">
+              <div
+                className="bg-[var(--color-primary)] h-full rounded-full transition-all duration-1000 ease-out"
+                style={{ width: `${taskProgress}%` }}
+              />
+            </div>
+          </div>
+        )}
       </Card>
 
-      {/* Main Goal */}
-      {mainGoal && (
-        <Card>
-          <div className="flex justify-between items-end mb-4">
-            <div>
-              <h2 className="text-[10px] font-bold text-[var(--color-text-muted)] uppercase tracking-wider mb-1">Main Goal</h2>
-              <div className="text-base font-semibold">{mainGoal.title}</div>
-            </div>
-            <div className="text-lg font-bold text-[var(--color-primary)]">{mainGoal.progress}%</div>
+      {/* Momentum & Stats Grid */}
+      <div className="grid grid-cols-2 gap-3">
+        <Card className="bg-gradient-to-br from-indigo-500/10 to-purple-500/10 border-indigo-500/20 flex flex-col justify-center items-center py-6 relative overflow-hidden">
+          <div className="absolute top-0 right-0 p-3 opacity-20">
+            <Flame size={48} className="text-indigo-400" />
           </div>
-          <div className="w-full bg-[var(--color-surface)] h-2.5 rounded-full overflow-hidden">
-            <div
-              className="bg-gradient-to-r from-indigo-500 to-purple-500 h-full rounded-full transition-all duration-1000 ease-out"
-              style={{ width: `${mainGoal.progress}%` }}
-            />
+          <span className="text-[10px] font-bold text-indigo-300 uppercase tracking-widest mb-1 z-10">Momentum</span>
+          <span className="text-4xl font-black text-white z-10 flex items-center gap-1">
+            🔥 {momentumScore}
+          </span>
+          <span className="text-[10px] text-indigo-300/70 mt-2 z-10 text-center px-2">
+            Based on {streak}-day streak and {taskProgress}% task completion.
+          </span>
+        </Card>
+
+        <div className="flex flex-col gap-3">
+          <Card className="flex-1 flex flex-col justify-center items-center py-4 bg-gradient-to-br from-rose-500/10 to-pink-500/10 border-rose-500/20">
+            <span className="text-[10px] font-bold text-rose-300 uppercase tracking-widest flex items-center gap-1 mb-1">
+              <Wallet size={10} /> Today's Spend
+            </span>
+            <span className="text-xl font-bold text-rose-100">${todaysExpense.toFixed(0)}</span>
+          </Card>
+          
+          <Card className="flex-1 flex flex-col justify-center items-center py-4 bg-gradient-to-br from-emerald-500/10 to-teal-500/10 border-emerald-500/20">
+            <span className="text-[10px] font-bold text-emerald-300 uppercase tracking-widest flex items-center gap-1 mb-1">
+              <CheckCircle2 size={10} /> Completed
+            </span>
+            <span className="text-xl font-bold text-emerald-100">{completedTasks} Actions</span>
+          </Card>
+        </div>
+      </div>
+
+      {/* My 3 Goals limit logic applied to UI */}
+      {goals.length > 3 && (
+        <div className="bg-amber-500/10 border border-amber-500/20 rounded-2xl p-4 flex items-start gap-3">
+          <div className="mt-0.5">
+            <Target size={18} className="text-amber-400" />
+          </div>
+          <div>
+            <p className="text-sm font-bold text-amber-100">You have {goals.length} active goals.</p>
+            <p className="text-xs text-amber-200/70 mt-1">
+              Your attention is being divided. Consider focusing on your top 3 to maintain high momentum.
+            </p>
+            <Link to="/goals" className="inline-block mt-2 text-[10px] font-bold text-amber-400 uppercase tracking-wider hover:text-amber-300">
+              Manage Goals <ArrowRight size={10} className="inline mb-0.5" />
+            </Link>
+          </div>
+        </div>
+      )}
+
+      {/* Goal Progress Overview */}
+      {goals.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center justify-between">
+              Goal Health
+              <Link to="/goals" className="text-[10px] font-medium text-[var(--color-primary)]">Manage</Link>
+            </CardTitle>
+          </CardHeader>
+          <div className="flex flex-col gap-3">
+            {goals.slice(0, 3).map((goal, i) => {
+              const healthScore = goal.progress;
+              const isHealthy = healthScore >= 50;
+              const isWarning = healthScore >= 20 && healthScore < 50;
+              
+              return (
+                <div key={goal.id} className="flex flex-col gap-1.5">
+                  <div className="flex justify-between items-center text-xs">
+                    <span className="font-semibold text-white flex items-center gap-1.5">
+                      <span className="text-[10px] text-[var(--color-text-muted)] font-mono">{i + 1 < 10 ? `0${i+1}` : i+1}</span>
+                      {goal.title}
+                    </span>
+                    <span className={`font-bold ${isHealthy ? 'text-emerald-400' : isWarning ? 'text-amber-400' : 'text-rose-400'}`}>
+                      {isHealthy ? '🟢 On track' : isWarning ? '🟡 Needs attention' : '🔴 Falling behind'}
+                    </span>
+                  </div>
+                  <div className="w-full bg-[var(--color-surface-hover)] h-1.5 rounded-full overflow-hidden">
+                    <div
+                      className={`h-full rounded-full transition-all duration-1000 ease-out ${isHealthy ? 'bg-emerald-500' : isWarning ? 'bg-amber-500' : 'bg-rose-500'}`}
+                      style={{ width: `${Math.max(5, healthScore)}%` }}
+                    />
+                  </div>
+                </div>
+              );
+            })}
           </div>
         </Card>
       )}
 
-      {/* Upcoming Reminders */}
-      {reminders.length > 0 && (
-        <Card>
-          <CardHeader>
-            <CardTitle>Upcoming Reminders</CardTitle>
-            <Link to="/reminders" className="text-xs text-[var(--color-primary)] flex items-center gap-1 font-medium">
-              View all <ArrowRight size={12} />
-            </Link>
-          </CardHeader>
-          <div className="flex flex-col gap-2.5">
-            {reminders.slice(0, 3).map(r => (
-              <div key={r.id} className="flex items-center gap-3">
-                <div className="w-8 h-8 rounded-full bg-amber-500/15 flex items-center justify-center shrink-0">
-                  <Bell size={14} className="text-amber-400" />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium truncate">{r.title}</p>
-                  <p className="text-[10px] text-[var(--color-text-muted)]">
-                    {new Date(r.dueDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
-                    {r.dueTime && ` at ${r.dueTime}`}
-                  </p>
-                </div>
+      {/* AI Intelligence Block */}
+      {visibleSuggestions.length > 0 && (
+        <div className="rounded-3xl p-5 bg-gradient-to-br from-[var(--color-surface-2)] to-black/40 border border-white/5">
+          <div className="flex items-center gap-2 mb-3">
+            <img src="/favicon.png" className="w-4 h-4 object-contain" alt="sparkle" />
+            <span className="text-xs font-bold text-[var(--color-text-muted)] uppercase tracking-widest">Nexa Intelligence</span>
+          </div>
+          
+          <div className="space-y-4">
+            {visibleSuggestions.slice(0, 2).map(s => (
+              <div key={s.id}>
+                <p className="text-sm font-semibold text-white mb-1">{s.title}</p>
+                <p className="text-xs text-[var(--color-text-muted)] leading-relaxed">{s.body}</p>
               </div>
             ))}
           </div>
-        </Card>
+        </div>
       )}
 
-      {/* Savings card — real data */}
-      {totalIncome > 0 && (
-        <Card className="bg-gradient-to-br from-emerald-500/10 to-teal-500/10 border-emerald-500/20 mb-6">
-          <div className="flex justify-between items-center mb-3">
+      {/* Action Prompts: Weekly Review & Daily Shutdown */}
+      <div className="flex flex-col gap-3 mt-4">
+        {new Date().getDay() === 0 && (
+          <button onClick={() => navigate('/insights')} className="w-full bg-gradient-to-r from-indigo-500 to-purple-500 rounded-2xl p-4 flex items-center justify-between text-left hover:scale-[1.02] transition-all shadow-lg shadow-indigo-500/20">
             <div>
-              <h2 className="text-[10px] font-bold text-emerald-400/70 uppercase tracking-wider mb-1">Net Balance</h2>
-              <div className={`text-2xl font-bold ${balance >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>${balance.toFixed(2)}</div>
+              <p className="text-xs font-bold text-indigo-100 uppercase tracking-widest mb-1">Sunday Routine</p>
+              <p className="text-sm font-bold text-white">Start Weekly Review</p>
             </div>
-            <div className="w-12 h-12 rounded-full bg-emerald-500/20 flex items-center justify-center">
-              <span className="text-emerald-400 font-bold text-sm">
-                {totalIncome > 0 ? `${Math.round((1 - totalExpense / totalIncome) * 100)}%` : '0%'}
-              </span>
-            </div>
+            <ArrowRight className="text-white" size={18} />
+          </button>
+        )}
+        
+        <button className="w-full bg-white/5 border border-white/10 hover:bg-white/10 rounded-2xl p-4 flex items-center justify-between text-left transition-all group">
+          <div>
+            <p className="text-xs font-bold text-[var(--color-text-muted)] uppercase tracking-widest mb-1 group-hover:text-white transition-colors">End of Day</p>
+            <p className="text-sm font-bold text-white">Daily Shutdown</p>
           </div>
-          <p className="text-xs text-emerald-300/50">Savings rate from all your tracked transactions.</p>
-        </Card>
-      )}
+          <CheckCircle2 className="text-[var(--color-text-muted)] group-hover:text-white transition-colors" size={18} />
+        </button>
+      </div>
+
     </div>
   );
 }

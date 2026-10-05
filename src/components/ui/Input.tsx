@@ -15,7 +15,7 @@ export function Input({ label, error, rightElement, className = '', ...props }: 
       <div className="relative">
         <input
           className={`
-            w-full bg-[var(--color-surface)] border rounded-xl px-4 py-3 text-[var(--color-text-main)]
+            w-full bg-[var(--color-surface)] border rounded-xl px-4 py-3 text-white
             text-sm placeholder:text-[var(--color-text-subtle)]
             focus:outline-none transition-all duration-200
             ${error
