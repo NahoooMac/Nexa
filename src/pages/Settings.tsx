@@ -10,7 +10,7 @@ import { useNavigate } from 'react-router-dom';
 import { sendPasswordResetEmail } from 'firebase/auth';
 import { auth } from '../lib/firebase';
 import { signInWithGoogle } from '../lib/calendarSync';
-import { requestNotificationPermission, hasNotificationPermission, initializeFCM } from '../lib/notifications';
+import { requestNotificationPermission, hasNotificationPermission, initializeFCM, getNotificationStatusLabel, isIOSPWA } from '../lib/notifications';
 import PinSetup from '../components/PinSetup';
 
 const AUTO_LOCK_OPTIONS = [
@@ -30,6 +30,7 @@ export default function Settings() {
   const navigate = useNavigate();
 
   const [notifications, setNotifications] = useState(hasNotificationPermission());
+  const iosPWA = isIOSPWA();
   const [notifRequesting, setNotifRequesting] = useState(false);
   const [pinMode, setPinMode] = useState<PinMode | null>(null);
   const [fcmToken, setFcmToken] = useState<string | null>(null);
@@ -157,58 +158,78 @@ export default function Settings() {
         <h2 className="text-[10px] font-bold text-[var(--color-text-muted)] uppercase tracking-widest mb-3 px-1">Notifications</h2>
         <Card className="p-0 overflow-hidden divide-y divide-[var(--color-border)]">
           {/* Browser notifications */}
-          <div className="p-4 flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="w-9 h-9 rounded-xl bg-amber-500/10 flex items-center justify-center">
-                <Bell size={17} className="text-amber-400" />
-              </div>
-              <div>
-                <div className="font-semibold text-sm">Reminder Alerts</div>
-                <div className="text-xs text-[var(--color-text-muted)]">
-                  {notifications ? "Enabled — you'll get reminders" : 'Disabled — tap to enable'}
+          <div className="p-4 flex flex-col gap-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 rounded-xl bg-amber-500/10 flex items-center justify-center">
+                  <Bell size={17} className="text-amber-400" />
+                </div>
+                <div>
+                  <div className="font-semibold text-sm">Reminder Alerts</div>
+                  <div className="text-xs text-[var(--color-text-muted)]">
+                    {getNotificationStatusLabel()}
+                  </div>
                 </div>
               </div>
+              {notifications ? (
+                <div className="w-12 h-6 rounded-full relative bg-indigo-500">
+                  <div className="absolute top-1 right-1 bg-white w-4 h-4 rounded-full shadow" />
+                </div>
+              ) : (
+                <button
+                  onClick={handleRequestNotifications}
+                  disabled={notifRequesting}
+                  className="px-3 py-1.5 rounded-xl text-xs font-bold bg-[var(--color-primary)] text-white disabled:opacity-60"
+                >
+                  {notifRequesting ? '…' : 'Enable'}
+                </button>
+              )}
             </div>
-            {notifications ? (
-              <div className="w-12 h-6 rounded-full relative bg-indigo-500">
-                <div className="absolute top-1 right-1 bg-white w-4 h-4 rounded-full shadow" />
-              </div>
-            ) : (
-              <button
-                onClick={handleRequestNotifications}
-                disabled={notifRequesting}
-                className="px-3 py-1.5 rounded-xl text-xs font-bold bg-[var(--color-primary)] text-white disabled:opacity-60"
-              >
-                {notifRequesting ? '…' : 'Enable'}
-              </button>
+            {iosPWA && !notifications && (
+              <p className="text-[10px] text-amber-400/80 leading-relaxed px-1">
+                ⚠️ iOS requires the app to be added to your Home Screen and notification permission granted from the in-app prompt.
+              </p>
+            )}
+            {'Notification' in window && Notification.permission === 'denied' && (
+              <p className="text-[10px] text-rose-400/80 leading-relaxed px-1">
+                Notifications are blocked. Open Settings → Safari (or your browser) → Notifications and allow for this site.
+              </p>
             )}
           </div>
 
           {/* Mobile Push (FCM) */}
-          <div className="p-4 flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="w-9 h-9 rounded-xl bg-purple-500/10 flex items-center justify-center">
-                <Smartphone size={17} className="text-purple-400" />
-              </div>
-              <div>
-                <div className="font-semibold text-sm">Mobile Push</div>
-                <div className="text-xs text-[var(--color-text-muted)]">
-                  {fcmToken ? '✅ Push registered' : 'Background notifications'}
+          <div className="p-4 flex flex-col gap-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 rounded-xl bg-purple-500/10 flex items-center justify-center">
+                  <Smartphone size={17} className="text-purple-400" />
+                </div>
+                <div>
+                  <div className="font-semibold text-sm">Mobile Push</div>
+                  <div className="text-xs text-[var(--color-text-muted)]">
+                    {fcmToken ? '✅ Push registered' : 'Background push notifications'}
+                  </div>
                 </div>
               </div>
+              {fcmToken ? (
+                <div className="flex items-center gap-1 text-emerald-400">
+                  <CheckCircle2 size={16} />
+                </div>
+              ) : (
+                <button
+                  onClick={handleEnablePush}
+                  disabled={fcmLoading || !notifications}
+                  className="px-3 py-1.5 rounded-xl text-xs font-bold bg-purple-500/20 text-purple-300 border border-purple-500/30 disabled:opacity-60"
+                  title={!notifications ? 'Enable Reminder Alerts first' : undefined}
+                >
+                  {fcmLoading ? '…' : 'Register'}
+                </button>
+              )}
             </div>
-            {fcmToken ? (
-              <div className="flex items-center gap-1 text-emerald-400">
-                <CheckCircle2 size={16} />
-              </div>
-            ) : (
-              <button
-                onClick={handleEnablePush}
-                disabled={fcmLoading}
-                className="px-3 py-1.5 rounded-xl text-xs font-bold bg-purple-500/20 text-purple-300 border border-purple-500/30 disabled:opacity-60"
-              >
-                {fcmLoading ? '…' : 'Register'}
-              </button>
+            {!fcmToken && !import.meta.env.VITE_FIREBASE_VAPID_KEY && (
+              <p className="text-[10px] text-[var(--color-text-subtle)] leading-relaxed px-1">
+                Requires VITE_FIREBASE_VAPID_KEY. Get it from Firebase Console → Project Settings → Cloud Messaging → Web Push Certificates.
+              </p>
             )}
           </div>
         </Card>

@@ -236,6 +236,20 @@ export function generateSuggestions(input: EngineInput): Suggestion[] {
     icon: '🎯', priority: 'medium', actionLabel: 'View', actionPath: '/tasks', createdAt: new Date().toISOString(),
   });
 
+  // Overplanning / Distraction Detector
+  const sevenDaysAgo = new Date();
+  sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+  const recentTasks = tasks.filter(t => t.createdAt && new Date(t.createdAt) >= sevenDaysAgo);
+  const recentlyCompleted = recentTasks.filter(t => t.completed).length;
+  if (recentTasks.length >= 8 && recentlyCompleted < recentTasks.length * 0.4) {
+    suggestions.push({
+      id: 'overplanning-warning', type: 'general',
+      title: 'Planning > Executing',
+      body: `You planned ${recentTasks.length} tasks this week but only completed ${recentlyCompleted}. Try breaking them down or reducing your daily target.`,
+      icon: '⚠️', priority: 'high', actionLabel: 'Review Tasks', actionPath: '/tasks', createdAt: new Date().toISOString(),
+    });
+  }
+
   if (streak >= 7) suggestions.push({
     id: 'streak-high', type: 'streak', title: `${streak}-day streak! 🔥`,
     body: 'Amazing consistency! Keep completing tasks daily to maintain it.',

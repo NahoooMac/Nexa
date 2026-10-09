@@ -4,13 +4,16 @@ import { useAuthStore } from '../store/authStore';
 const CALENDAR_SCOPE = 'https://www.googleapis.com/auth/calendar.events';
 
 /**
- * Sign in with Google using a robust fallback pattern.
- * Tries a popup first, and if blocked (e.g., in PWAs or Safari), falls back to redirect.
+ * Sign in with Google and request the Calendar scope.
+ * Always uses prompt:'consent' + select_account to ensure we get a fresh
+ * access token (Google only returns an access token on the consent screen).
  */
 export const signInWithGoogle = async (): Promise<string | null> => {
   const authInstance = getAuth();
   const provider = new GoogleAuthProvider();
   provider.addScope(CALENDAR_SCOPE);
+  // Force consent screen so Google always returns a fresh access token
+  provider.setCustomParameters({ prompt: 'consent', access_type: 'offline' });
 
   try {
     const result = await signInWithPopup(authInstance, provider);
@@ -53,7 +56,28 @@ export const handleGoogleRedirectResult = async (): Promise<void> => {
 async function getGoogleToken(): Promise<string> {
   const stored = useAuthStore.getState().googleAccessToken;
   if (stored) return stored;
-  throw new Error('Google Calendar not connected. Please connect it in Settings.');
+  throw new Error('Google Calendar not connected. Please connect it in Settings → Integrations.');
+}
+
+/**
+ * Make a Google Calendar API request, auto-retrying once if the token is expired (401).
+ * On a 401, it clears the stored token so the user can re-connect.
+ */
+async function calendarFetch(
+  url: string,
+  options: RequestInit
+): Promise<Response> {
+  const response = await fetch(url, options);
+
+  if (response.status === 401) {
+    // Token expired — clear it so the UI shows "Connect" again
+    useAuthStore.getState().setGoogleAccessToken(null);
+    throw new Error(
+      'Your Google Calendar session has expired. Please reconnect in Settings → Integrations.'
+    );
+  }
+
+  return response;
 }
 
 /** Push a task/reminder as an event to Google Calendar. */
@@ -97,20 +121,22 @@ export const pushToGoogleCalendar = async (task: {
     },
   };
 
-  const response = await fetch('https://www.googleapis.com/calendar/v3/calendars/primary/events', {
-    method: 'POST',
-    headers: {
-      Authorization: `Bearer ${token}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify(event),
-  });
+  const response = await calendarFetch(
+    'https://www.googleapis.com/calendar/v3/calendars/primary/events',
+    {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(event),
+    }
+  );
 
   if (!response.ok) {
     const errorText = await response.text();
     console.error('Google Calendar API Error:', errorText);
-    useAuthStore.getState().setGoogleAccessToken(null);
-    throw new Error('Failed to create event in Google Calendar. API Error: ' + response.statusText);
+    throw new Error('Failed to create event in Google Calendar: ' + response.statusText);
   }
 
   const data = await response.json();
@@ -124,7 +150,7 @@ export const deleteFromGoogleCalendar = async (eventId: string): Promise<void> =
 
   try {
     const token = await getGoogleToken();
-    await fetch(
+    await calendarFetch(
       `https://www.googleapis.com/calendar/v3/calendars/primary/events/${eventId}`,
       {
         method: 'DELETE',

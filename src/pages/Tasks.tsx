@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Card } from '../components/ui/Card';
-import { CheckCircle2, Circle, AlertCircle, Clock, BookOpen, Dumbbell, Play, CheckSquare, Trash2, Calendar } from 'lucide-react';
+import { CheckCircle2, Circle, AlertCircle, Clock, BookOpen, Dumbbell, Play, CheckSquare, Trash2, Calendar, Target } from 'lucide-react';
 import { dbHelpers } from '../lib/db';
 import { pushToGoogleCalendar } from '../lib/calendarSync';
 import { useNavigate } from 'react-router-dom';
@@ -34,6 +34,7 @@ const typeConfig = {
 export default function Tasks() {
   const navigate = useNavigate();
   const [tasks, setTasks] = useState<Task[]>([]);
+  const [goals, setGoals] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<FilterTab>('today');
   const [syncingId, setSyncingId] = useState<string | null>(null);
@@ -41,8 +42,9 @@ export default function Tasks() {
 
   useEffect(() => {
     try {
-      const unsub = dbHelpers.subscribeToTasks((fetched) => { setTasks(fetched as Task[]); setIsLoading(false); });
-      return () => unsub();
+      const unsubTasks = dbHelpers.subscribeToTasks((fetched) => { setTasks(fetched as Task[]); setIsLoading(false); });
+      const unsubGoals = dbHelpers.subscribeToGoals(setGoals);
+      return () => { unsubTasks(); unsubGoals(); };
     } catch { setIsLoading(false); }
   }, []);
 
@@ -126,6 +128,14 @@ export default function Tasks() {
                     <span className={`text-sm font-medium truncate ${task.completed ? 'text-[var(--color-text-muted)] line-through' : 'text-white'}`}>{task.title}</span>
                     <div className="flex items-center gap-2 mt-0.5 flex-wrap">
                       {task.priority && <span className="flex items-center gap-1 text-[10px] text-rose-400 font-semibold bg-rose-500/10 px-1.5 py-0.5 rounded-full"><AlertCircle size={9} />Priority</span>}
+                      {task.referenceId && (() => {
+                        const lg = goals.find(g => g.id === task.referenceId);
+                        return lg ? (
+                          <span className="flex items-center gap-1 text-[10px] text-indigo-400 font-semibold bg-indigo-500/10 px-1.5 py-0.5 rounded-full">
+                            <Target size={9} />{lg.title}
+                          </span>
+                        ) : null;
+                      })()}
                       {task.dueDate && <span className="flex items-center gap-1 text-[10px] text-[var(--color-text-muted)]"><Clock size={9} />{new Date(task.dueDate + 'T00:00:00').toLocaleDateString()}</span>}
                       {task.calendarEventId && <span className="flex items-center gap-1 text-[10px] text-emerald-400"><Calendar size={9} />Synced</span>}
                       {task.type && task.type !== 'general' && tc.badge && (

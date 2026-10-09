@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { X, CheckSquare, Wallet, Target, Calendar, Bell } from 'lucide-react';
 import { Button } from './ui/Button';
 import { Input } from './ui/Input';
@@ -27,13 +27,22 @@ export default function QuickAddModal({ isOpen, onClose }: QuickAddModalProps) {
   const [taskType, setTaskType] = useState<'general' | 'learning' | 'workout'>('general');
   const [priority, setPriority] = useState(false);
   const [syncToCalendar, setSyncToCalendar] = useState(false);
+  const [linkedGoalId, setLinkedGoalId] = useState('');
+  const [goals, setGoals] = useState<any[]>([]);
+
+  useEffect(() => {
+    if (activeForm === 'task' || activeForm === 'none') {
+      const unsub = dbHelpers.subscribeToGoals(setGoals);
+      return () => unsub();
+    }
+  }, [activeForm]);
 
   if (!isOpen) return null;
 
   const resetForm = () => {
     setActiveForm('none'); setTitle(''); setAmount(''); setType('expense');
     setDueDate(''); setDueTime('09:00'); setTaskType('general');
-    setPriority(false); setSyncToCalendar(false);
+    setPriority(false); setSyncToCalendar(false); setLinkedGoalId('');
   };
 
   const handleClose = () => { resetForm(); onClose(); };
@@ -49,6 +58,8 @@ export default function QuickAddModal({ isOpen, onClose }: QuickAddModalProps) {
       if (activeForm === 'task') {
         const taskData: any = { title, priority, type: taskType };
         if (dueDate) taskData.dueDate = dueDate;
+        if (linkedGoalId) taskData.referenceId = linkedGoalId;
+        
         await dbHelpers.addTask(taskData);
         if (syncToCalendar && dueDate) {
           try {
@@ -72,7 +83,13 @@ export default function QuickAddModal({ isOpen, onClose }: QuickAddModalProps) {
         }
         await dbHelpers.addTransaction({ title, amount: finalAmount, type, category: 'General' });
       } else if (activeForm === 'goal') {
-        await dbHelpers.addGoal({ title, milestones: 5, color: 'bg-indigo-500' });
+        await dbHelpers.addGoal({ 
+          title, 
+          category: 'other',
+          color: 'bg-indigo-500', 
+          priority: 'medium',
+          milestoneItems: []
+        });
       }
       handleClose();
     } catch {
@@ -150,6 +167,19 @@ export default function QuickAddModal({ isOpen, onClose }: QuickAddModalProps) {
                     <input type="checkbox" checked={priority} onChange={(e) => setPriority(e.target.checked)} className="w-4 h-4 rounded accent-rose-500" />
                     <span className="text-sm text-rose-400 font-semibold">Mark as Priority 🔴</span>
                   </label>
+                  {goals.length > 0 && (
+                    <div>
+                      <label className="block text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wider mb-1.5">Link to Goal (Optional)</label>
+                      <select
+                        value={linkedGoalId}
+                        onChange={(e) => setLinkedGoalId(e.target.value)}
+                        className="w-full bg-[var(--color-surface)] border border-[var(--color-border)] text-white text-sm rounded-xl px-4 py-3 focus:outline-none focus:border-[var(--color-primary)] transition-colors"
+                      >
+                        <option value="">None</option>
+                        {goals.map(g => <option key={g.id} value={g.id}>{g.title}</option>)}
+                      </select>
+                    </div>
+                  )}
                   {dueDate && (
                     <label className="flex items-center gap-2.5 cursor-pointer">
                       <input type="checkbox" checked={syncToCalendar} onChange={(e) => setSyncToCalendar(e.target.checked)} className="w-4 h-4 rounded accent-indigo-500" />
