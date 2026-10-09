@@ -1,20 +1,12 @@
 import { useState, useEffect } from 'react';
 import { Card, CardHeader, CardTitle } from '../components/ui/Card';
-import { ProgressRing } from '../components/ui/ProgressRing';
-import { AreaChart, Area, ResponsiveContainer, XAxis, Tooltip } from 'recharts';
-import { CheckCircle2, Circle, ArrowRight, Target, Wallet, BookOpen, Dumbbell, Flame, Bell, ChevronRight } from 'lucide-react';
+
+import { CheckCircle2, Circle, ArrowRight, Target, Wallet, Flame } from 'lucide-react';
 import { dbHelpers } from '../lib/db';
 import { generateSuggestions, computeProductivityScore, type Suggestion } from '../lib/aiEngine';
 import { Link, useNavigate } from 'react-router-dom';
 
-const shortcuts = [
-  { label: 'Goals',    icon: Target,   path: '/goals',    color: 'from-indigo-500/20 to-purple-500/20', iconColor: 'text-indigo-400' },
-  { label: 'Budget',   icon: Wallet,   path: '/budget',   color: 'from-emerald-500/20 to-teal-500/20', iconColor: 'text-emerald-400' },
-  { label: 'Learning', icon: BookOpen, path: '/learning', color: 'from-amber-500/20 to-orange-500/20', iconColor: 'text-amber-400' },
-  { label: 'Workouts', icon: Dumbbell, path: '/workouts', color: 'from-rose-500/20 to-pink-500/20',    iconColor: 'text-rose-400' },
-];
 
-const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
 export default function Dashboard() {
   const navigate = useNavigate();
@@ -27,7 +19,7 @@ export default function Dashboard() {
   const [streak, setStreak] = useState(0);
   const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
   const [productivityScore, setProductivityScore] = useState(0);
-  const [dismissedSuggestions, setDismissedSuggestions] = useState<Set<string>>(new Set());
+  const [dismissedSuggestions] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     const unsubTasks = dbHelpers.subscribeToTasks(setTasks);
@@ -51,31 +43,9 @@ export default function Dashboard() {
   }, [tasks, goals, transactions, workouts, courses, reminders, streak]);
 
   // Real financial data
-  const totalExpense = transactions.filter(t => t.type === 'expense').reduce((a, c) => a + c.amount, 0);
-  const totalIncome = transactions.filter(t => t.type === 'income').reduce((a, c) => a + c.amount, 0);
-  const balance = totalIncome - totalExpense;
-  const todayTasks = tasks.filter(t => !t.completed).slice(0, 4);
-  const mainGoal = goals[0];
   const completedTasks = tasks.filter(t => t.completed).length;
   const taskProgress = tasks.length > 0 ? Math.round((completedTasks / tasks.length) * 100) : 0;
-  const motivationalLabel = taskProgress === 100 ? '🎉 Done!' : taskProgress >= 60 ? 'Almost!' : taskProgress >= 30 ? 'Keep going!' : "Let's go!";
 
-  // Build real cash-flow chart from actual transactions (last 7 days)
-  const chartData = (() => {
-    const days = Array.from({ length: 7 }, (_, i) => {
-      const d = new Date();
-      d.setDate(d.getDate() - (6 - i));
-      return { name: WEEKDAYS[d.getDay()], date: d.toISOString().split('T')[0], value: 0 };
-    });
-    for (const tx of transactions) {
-      const txDate = tx.date?.split('T')[0];
-      const day = days.find(d => d.date === txDate);
-      if (day) {
-        day.value += tx.type === 'income' ? tx.amount : -tx.amount;
-      }
-    }
-    return days;
-  })();
 
   const visibleSuggestions = suggestions.filter(s => !dismissedSuggestions.has(s.id)).slice(0, 5);
 

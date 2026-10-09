@@ -23,7 +23,7 @@ function getPeriodTransactions(transactions: any[], days: number) {
   });
 }
 
-function buildActionPrompt(action: AIAction, finance: ReturnType<typeof analyzeFinances>) {
+function buildActionPrompt(action: AIAction) {
   const prompts: Record<AIAction, string> = {
     spending: 'Analyze my spending. Tell me the biggest spending areas, important changes, unusual patterns, and 2 practical actions I can take.',
     savings: 'Review my savings. Explain my current savings rate, net savings, monthly trend, and what I should focus on to improve savings.',
@@ -93,7 +93,7 @@ export default function AIInsights() {
           : transactions;
 
       const periodFinance = analyzeFinances(periodTransactions);
-      const result = await askNexaAI(buildActionPrompt(action, periodFinance), {
+      const result = await askNexaAI(buildActionPrompt(action), {
         finance: periodFinance,
         tasks: isWeekly || isMonthly ? tasks : tasks,
         goals,

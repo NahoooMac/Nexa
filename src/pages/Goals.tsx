@@ -3,7 +3,7 @@ import { Card } from '../components/ui/Card';
 import {
   Target, Flag, Calendar, BarChart2, Plus, Trash2, ChevronRight,
   CheckCircle2, Circle, Wallet, MapPin, GripVertical, Edit3,
-  Plane, BookOpen, Dumbbell, Star, ShoppingCart, TrendingUp, X,
+  Plane, BookOpen, Dumbbell, Star, ShoppingCart, X,
   ExternalLink, AlertCircle,
 } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, ResponsiveContainer, Tooltip } from 'recharts';
